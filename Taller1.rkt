@@ -65,9 +65,27 @@
     )
     )
   (cond
+    ; Vemos si la lista L es vacia, para antes de entrar a counter ;
+    ; devolver 0 como valor total de inversión ;
     [(eq? L '()) 0]
+    ; en este caso sumamos el llamado de counter con el primer ;
+    ; elemento de L y el resto de la lista con el llamado a ;
+    ; inversiones con el resto de la lista L "para caer en el caso ;
+    ; de parada una vez la lista no tenga más elementos ;
     [else (+ (counter (car L) (cdr L)) (inversions (cdr L)))]
     )
   )
+
+; 12. filter-acum ;
+(define filter-acum
+  (lambda (a b F acum filter)
+    (cond
+      [(> a b) acum]
+      [(filter a) (filter-acum (+ a 1) b F (F acum a) filter)]
+      [else (filter-acum (+ a 1) b F acum filter)]
+      )
+    )
+  )
+
 
 

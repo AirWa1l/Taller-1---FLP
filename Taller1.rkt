@@ -80,12 +80,22 @@
 (define filter-acum
   (lambda (a b F acum filter)
     (cond
+      ; Como caso base, tenemos que si a > b la función nos devolverá ;
+      ; el acumulado ;
       [(> a b) acum]
+      ; En caso de que a cumpla con el filtro "este retornará #t si lo ;
+      ; cumple o #f en caso de que no", si lo cumple se aplicará la ;
+      ; función F con el acum y a ;
       [(filter a) (filter-acum (+ a 1) b F (F acum a) filter)]
+      ; En caso de que, sencillamente llama de forma recursiva sin ;
+      ; aplicar nada y el acum se mantiene igual ;
       [else (filter-acum (+ a 1) b F acum filter)]
       )
     )
   )
+
+; 15. count-odd-and-even arbol ;
+
 
 
 

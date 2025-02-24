@@ -95,6 +95,36 @@
   )
 
 ; 15. count-odd-and-even arbol ;
+(define count-odd-and-even
+  (lambda (arbol)
+    ; La función counter recibirá un valor val y 2 listas con los ;
+    ; conteos correspondientes a los subarboles izq y der, ;
+    ; de modo que al final este nos devolverá una lista con el total ;
+    ; de numeros pares e impares de nuestro arbol ;
+    (define counter
+    (lambda (val izq der)
+      (list (+ (cond
+                 [(even? val) 1] [else 0]) (car izq) (car der))
+            (+ (cond
+                 [(odd? val) 1] [else 0]) (cadr izq) (cadr der))
+            )
+    )
+    )
+    (cond
+      ; Caso base: En caso de que el arbol sea vacio, nos devolverá ;
+      ; una lista (0 0) ya que no habrá ni pares ni impares ;
+      [(eq? arbol '()) '(0 0)]
+      ; En caso de que no ocurra el caso base, este hace 2 llamados ;
+      ; recursivos a count-odd-and-even para los subarboles izq y der ;
+      ; y se usa counter para obtener los resultados ;
+      [else (counter (car arbol)
+                     (count-odd-and-even (cadr arbol))
+                     (count-odd-and-even (caddr arbol)))]
+      )
+    )
+  )
+
+; 18. pascal N ;
 
 
 

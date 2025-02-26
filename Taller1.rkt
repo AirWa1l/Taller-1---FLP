@@ -125,7 +125,35 @@
   )
 
 ; 18. pascal N ;
-
+(define pascal
+  (lambda (n)
+  (define colum
+    ; Creamos una función auxiliar que nos ayudara a generar la nueva ;
+    ; fila sumando los elementos como en el triángulo de pascal ;
+    (lambda (col)
+      (cond
+        ; Caso base, donde se agrega un 1 al final de la lista  cuando ;
+        ; ya no quedan elementos restante en la lista ;
+        [(eq? (cdr col) '()) '(1)]
+        ; Aqui añadimos la suma de los elementos adyacente "1 + 1" "2" ;
+        ; y creamos una lista con los resultados ;
+        [else (cons (+ (car col) (cadr col))
+                    ; Por último, llamamos recursivamente lo que queda ;
+                    ; de la fila ;
+                    (colum (cdr col)))]
+        )
+      )
+    )
+    (cond
+      ; Este es el caso base de Pascal, donde si n es 1, nos retorna (1) ;
+      [(= n 1) '(1)]
+      ; aqui añadimos 1 al resultante de invocar la función auxiliar ;
+      ; colum que en base a la fila anterior de pascal calculara la nueva ;
+      ; fila ;
+      [else (cons 1 (colum (pascal (- n 1))))]
+      )
+  )
+  )
 
 
 

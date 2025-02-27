@@ -2,6 +2,24 @@
 
 ; Taller 1 - FLP;
 
+;* PUNTO 1
+;Gramatica
+;<Invert> ::= () 
+;         ::= (<Invert> <par_invertido>)
+;<par_invertido> ::= (<elemento> <elemento>)
+; invert: Lista x Predicado -> Lista
+; Uso: (invert L) = Lista, con pares ordenados (x, y)
+; pero cuando no hay lista vacia el primer par se invierte (y, x)
+; y la cola de la lista llama a la funcion recursivamente.
+(define (invert L)
+  (if (null? L)
+      '()  ;; Retorna lista vacía si L está vacía
+      (cons (list (cadar L) (caar L)) (invert (cdr L))))) 
+
+;;! Casos de prueba
+;;(invert '((3 2) (4 2) (1 5) (2 8)))
+;;(invert '(("HOLA" 9) (f 90) (82 7)))
+;;(invert '((6 9) ((3 5 7) 18) (k 7)))
 
 ;* PUNTO 2
 ;; Recibe una lista `L` y devuelve una nueva lista donde cada elemento de `L`

@@ -72,6 +72,33 @@
 ; (list-set '(a b d e c) 1 '1) ;
 ; (list-set '(a b c d) 0 '(1 2)) ;
 
+;* PUNTO 4
+;Gramatica
+;<filter-in> ::= () 
+;            ::= (filter-in <Predicado> <Lista>)
+;<Lista> ::= '()  
+;         ::= (<elemento> <Lista>)
+;filter-in: Predicado x Lista -> Lista
+;Uso: (filter-in P L) = Lista que contiene los elementos
+;que pertenecen a L y satisfacen el predicado P mediante llamados recursivos
+(define filter-in
+  (lambda (P L)
+    (if (null? L)
+        empty
+        (if (P (car L)) (cons (car L) (filter-in P (cdr L) ) )
+            (filter-in P (cdr L))
+            )
+        )
+    )
+  )
+
+;;! Casos de prueba
+;;(filter-in number? '(a 2 (1 3) b 7))
+;;(filter-in symbol? '(a (b c) 17 foo))
+;;(filter-in string? '(a b u "univalle" "racket" "flp" 28 90 (1 2 3)))
+;;(filter-in null? '(a 2 () (1 3) b (()) 7))
+;;(filter-in list? '(a (b c) 17 ("Restaurante" "Central"))
+
 
 ;;Punto 5
 ;;List-index es una función que recibe un predicado y una lista, esta función devuelve

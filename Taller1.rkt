@@ -2,6 +2,19 @@
 
 ; Taller 1 - FLP;
 
+;; Funciones Auxiliares
+;; my-append: Lista, Lista -> Lista
+;; Uso: (my-append L1 L2) -> Lista de elementos de L1 y L2
+;; Crea una unica lista con los elementos de 2 listas
+(define my-append
+  (lambda (L1 L2)
+    (cond
+      [(null? L1) L2]
+      [(null? L2) L1]
+      [else (cons (car L1) (my-append (cdr L1) L2 ))]
+      )
+    ))
+
 ;* PUNTO 1
 ;; invert: Lista x Predicado -> Lista
 ;; Uso: (invert L) = Lista, con pares ordenados (x, y)
@@ -163,16 +176,6 @@
 ;; cartesian-product: Lista x Lista -> Lista
 ;; Uso: (cartesian-product L1 L2) = Lista de tuplas, resultados
 ;; del producto cartesiano entre L1 y L2 se utiliza my-append para eliminar parentesis
-;; my-append: Lista, Lista -> Lista
-;; usage: (p-append l1 l2) -> Lista de elementos de l1 y l2
-(define my-append
-  (lambda (L1 L2)
-    (cond
-      [(null? L1) L2]
-      [(null? L2) L1]
-      [else (cons (car L1) (my-append (cdr L1) L2 ))]
-      )
-    ))
 ;; Gramatica
 ;;<cartesian-product> ::='()
 ;;                    ::= (append <cartesian-product-helper> <cartesian-product>)

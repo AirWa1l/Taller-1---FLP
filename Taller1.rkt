@@ -360,6 +360,32 @@
 ; (filter-acum 5 50 + 0 odd?) ;
 ; (filter-acum 0 2 + 0 even?) ;
 
+;* PUNTO 13
+;; operate: Lista[Función Binaria] x Lista[Enteros] -> Entero
+;; Usage: (operate lrators lrands) = Resultado de aplicar sucesivamente las operaciones
+;; de lrators a los valores de lrands
+;; Gramatica:
+;; <operate> ::= (<entero>)
+;;           ::= (<lista-operadores> <lista-enteros>)
+(define operate
+  (lambda (lrators lrands)
+    (if (equal? (length lrands) 1)
+        (car lrands)
+        (operate
+         (cdr lrators)
+         (cons
+          ((car lrators) (car lrands) (cadr lrands))
+          (cdr (cdr lrands))
+          ))
+        )
+    ))
+
+;;! Casos de prueba
+;;(operate (list + * + - *) '(1 2 8 4 11 6))
+;;(operate (list *) '(4 5))
+;;(operate (list * * * +) '(2 2 2 2 1))
+;;(operate (list * - / +) '(1 2 5 2 10))
+
 ;;Punto 14
 ;; Recibe un número n y un Árbol Binario de Búsqueda (`BST`).
 ;; Retorna una lista de símbolos left o right que representan el camino

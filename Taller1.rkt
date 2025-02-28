@@ -281,6 +281,32 @@
 ; (inversions '(4 3 2 1)) ;
 ; (inversions '(10 50 70 200)) ;
 
+;* PUNTO 10
+;; up: Lista -> Lista
+;; Usage: (up L) = Lista similar a L pero se remueve un nivel de paréntesis (si lo tiene)
+;; a cada elemento del nivel más alto de la lista.
+;; Gramatica
+;; <up> ::= '()
+;;      ::= (<elemento> <up>)
+;;
+(define up
+  (lambda (L)
+    (if (null? L)
+        empty
+        (if (list? (car L)) (my-append (car L)(up (cdr L)))
+            (cons (car L) (up (cdr L)))
+            )
+        )
+    )
+  )
+
+;;! Casos de prueba
+;;(up '((1 2) (3 4)))
+;;(up '((x (y)) z))
+;;(up '((1 2 3)4)
+;;(up '(("ES" "UNA" "LISTA")4 (K ("LISTA" "BAJA"))))
+
+
 ;;Punto 11
 ;; Recibe una función F y dos listas L1 y L2, y devuelve una nueva lista 
 ;; aplicando F a cada par de elementos correspondientes de L1 y L2

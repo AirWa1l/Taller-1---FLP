@@ -158,6 +158,44 @@
 ; (swapper 'm 'n '(q e r t y u)) ;
 ; (swapper '? '- '(? e - ? - $)) ;
 
+;* PUNTO 7
+;Gramatica
+;<cartesian-product> ::='()
+;                    ::= (append <cartesian-product-helper> <cartesian-product>)
+;<cartesian-product-helper> ::= '() 
+;                           ::= ((list <e-elemento> <elemento>) <cartesian-product-helper>)
+; cartesian-product: Lista x Lista -> Lista
+;; Uso: (cartesian-product L1 L2) = Lista de tuplas, resultados
+;; del producto cartesiano entre L1 y L2 se utiliza 
+(define cartesian-product
+  (lambda (L1 L2)
+    ;cartesian-product-helper: Elemento x Lista -> Lista
+    ;usage: (cartesian-product-helper e L2) = Tuplas entre un elemento e con cada elemento de L2
+    (define cartesian-product-helper
+      (lambda (e L2)
+        (if (null? L2)
+            empty
+            (cons
+             (list e (car L2))
+             (cartesian-product-helper e (cdr L2))
+             )
+            )
+        ))
+
+    (if (or (null? L1) (null? L2))
+        empty
+        (append
+         (cartesian-product-helper (car L1) L2)
+         (cartesian-product (cdr L1) L2)
+         )
+        )
+    )
+  )
+
+;;! Casos de prueba
+;;(cartesian-product '(a b c) '(x y))
+;;(cartesian-product '(p q r) '(5 6 7))
+
 ;;Punto 8
 
 ;; mapping: (X -> Y) Lista Lista -> Lista

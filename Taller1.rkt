@@ -3,14 +3,14 @@
 ; Taller 1 - FLP;
 
 ;* PUNTO 1
-;Gramatica
-;<Invert> ::= () 
-;         ::= (<Invert> <par_invertido>)
-;<par_invertido> ::= (<elemento> <elemento>)
-; invert: Lista x Predicado -> Lista
-; Uso: (invert L) = Lista, con pares ordenados (x, y)
-; pero cuando no hay lista vacia el primer par se invierte (y, x)
-; y la cola de la lista llama a la funcion recursivamente.
+;; invert: Lista x Predicado -> Lista
+;; Uso: (invert L) = Lista, con pares ordenados (x, y)
+;; pero cuando no hay lista vacia el primer par se invierte (y, x)
+;; y la cola de la lista llama a la funcion recursivamente.
+;; Gramatica
+;; <Invert> ::= () 
+;;         ::= (<Invert> <par_invertido>)
+;; <par_invertido> ::= (<elemento> <elemento>)
 (define (invert L)
   (if (null? L)
       '()  ;; Retorna lista vacía si L está vacía
@@ -73,14 +73,15 @@
 ; (list-set '(a b c d) 0 '(1 2)) ;
 
 ;* PUNTO 4
-;Gramatica
-;<filter-in> ::= () 
-;            ::= (filter-in <Predicado> <Lista>)
-;<Lista> ::= '()  
-;         ::= (<elemento> <Lista>)
-;filter-in: Predicado x Lista -> Lista
-;Uso: (filter-in P L) = Lista que contiene los elementos
-;que pertenecen a L y satisfacen el predicado P mediante llamados recursivos
+
+;;filter-in: Predicado x Lista -> Lista
+;;Uso: (filter-in P L) = Lista que contiene los elementos
+;;que pertenecen a L y satisfacen el predicado P mediante llamados recursivos
+;;Gramatica
+;;<filter-in> ::= () 
+;;            ::= (filter-in <Predicado> <Lista>)
+;;<Lista> ::= '()  
+;;        ::= (<elemento> <Lista>)
 (define filter-in
   (lambda (P L)
     (if (null? L)
@@ -159,14 +160,24 @@
 ; (swapper '? '- '(? e - ? - $)) ;
 
 ;* PUNTO 7
-;Gramatica
-;<cartesian-product> ::='()
-;                    ::= (append <cartesian-product-helper> <cartesian-product>)
-;<cartesian-product-helper> ::= '() 
-;                           ::= ((list <e-elemento> <elemento>) <cartesian-product-helper>)
-; cartesian-product: Lista x Lista -> Lista
+;; cartesian-product: Lista x Lista -> Lista
 ;; Uso: (cartesian-product L1 L2) = Lista de tuplas, resultados
-;; del producto cartesiano entre L1 y L2 se utiliza 
+;; del producto cartesiano entre L1 y L2 se utiliza my-append para eliminar parentesis
+;; my-append: Lista, Lista -> Lista
+;; usage: (p-append l1 l2) -> Lista de elementos de l1 y l2
+(define my-append
+  (lambda (L1 L2)
+    (cond
+      [(null? L1) L2]
+      [(null? L2) L1]
+      [else (cons (car L1) (my-append (cdr L1) L2 ))]
+      )
+    ))
+;; Gramatica
+;;<cartesian-product> ::='()
+;;                    ::= (append <cartesian-product-helper> <cartesian-product>)
+;;<cartesian-product-helper> ::= '() 
+;                           ::= ((list <e-elemento> <elemento>) <cartesian-product-helper>)
 (define cartesian-product
   (lambda (L1 L2)
     ;cartesian-product-helper: Elemento x Lista -> Lista
@@ -184,7 +195,7 @@
 
     (if (or (null? L1) (null? L2))
         empty
-        (append
+        (my-append
          (cartesian-product-helper (car L1) L2)
          (cartesian-product (cdr L1) L2)
          )
@@ -195,6 +206,9 @@
 ;;! Casos de prueba
 ;;(cartesian-product '(a b c) '(x y))
 ;;(cartesian-product '(p q r) '(5 6 7))
+;;(cartesian-product '(p "HOLA" r) '(5 "MUNDO" 7))
+;;(cartesian-product '(p (2 3) 4) '(5 (6 7) 7))
+
 
 ;;Punto 8
 

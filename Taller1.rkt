@@ -284,7 +284,7 @@
 ;* PUNTO 10
 ;; up: Lista -> Lista
 ;; Usage: (up L) = Lista similar a L pero se remueve un nivel de paréntesis (si lo tiene)
-;; a cada elemento del nivel más alto de la lista.
+;; a cada elemento del nivel más alto de la lista usando my-append del punto 4.
 ;; Gramatica
 ;; <up> ::= '()
 ;;      ::= (<elemento> <up>)

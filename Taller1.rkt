@@ -3,14 +3,14 @@
 ; Taller 1 - FLP;
 
 ;* PUNTO 1
-;Gramatica
-;<Invert> ::= () 
-;         ::= (<Invert> <par_invertido>)
-;<par_invertido> ::= (<elemento> <elemento>)
-; invert: Lista x Predicado -> Lista
-; Uso: (invert L) = Lista, con pares ordenados (x, y)
-; pero cuando no hay lista vacia el primer par se invierte (y, x)
-; y la cola de la lista llama a la funcion recursivamente.
+;; invert: Lista x Predicado -> Lista
+;; Uso: (invert L) = Lista, con pares ordenados (x, y)
+;; pero cuando no hay lista vacia el primer par se invierte (y, x)
+;; y la cola de la lista llama a la funcion recursivamente.
+;; Gramatica
+;; <Invert> ::= () 
+;;         ::= (<Invert> <par_invertido>)
+;; <par_invertido> ::= (<elemento> <elemento>)
 (define (invert L)
   (if (null? L)
       '()  ;; Retorna lista vacía si L está vacía
@@ -72,6 +72,34 @@
 ; (list-set '(a b d e c) 1 '1) ;
 ; (list-set '(a b c d) 0 '(1 2)) ;
 
+;* PUNTO 4
+
+;;filter-in: Predicado x Lista -> Lista
+;;Uso: (filter-in P L) = Lista que contiene los elementos
+;;que pertenecen a L y satisfacen el predicado P mediante llamados recursivos
+;;Gramatica
+;;<filter-in> ::= () 
+;;            ::= (filter-in <Predicado> <Lista>)
+;;<Lista> ::= '()  
+;;        ::= (<elemento> <Lista>)
+(define filter-in
+  (lambda (P L)
+    (if (null? L)
+        empty
+        (if (P (car L)) (cons (car L) (filter-in P (cdr L) ) )
+            (filter-in P (cdr L))
+            )
+        )
+    )
+  )
+
+;;! Casos de prueba
+;;(filter-in number? '(a 2 (1 3) b 7))
+;;(filter-in symbol? '(a (b c) 17 foo))
+;;(filter-in string? '(a b u "univalle" "racket" "flp" 28 90 (1 2 3)))
+;;(filter-in null? '(a 2 () (1 3) b (()) 7))
+;;(filter-in list? '(a (b c) 17 ("Restaurante" "Central"))
+
 
 ;;Punto 5
 ;;List-index es una función que recibe un predicado y una lista, esta función devuelve
@@ -130,6 +158,57 @@
 ; (swapper '1 'c '(c d q e r 1 c)) ;
 ; (swapper 'm 'n '(q e r t y u)) ;
 ; (swapper '? '- '(? e - ? - $)) ;
+
+;* PUNTO 7
+;; cartesian-product: Lista x Lista -> Lista
+;; Uso: (cartesian-product L1 L2) = Lista de tuplas, resultados
+;; del producto cartesiano entre L1 y L2 se utiliza my-append para eliminar parentesis
+;; my-append: Lista, Lista -> Lista
+;; usage: (p-append l1 l2) -> Lista de elementos de l1 y l2
+(define my-append
+  (lambda (L1 L2)
+    (cond
+      [(null? L1) L2]
+      [(null? L2) L1]
+      [else (cons (car L1) (my-append (cdr L1) L2 ))]
+      )
+    ))
+;; Gramatica
+;;<cartesian-product> ::='()
+;;                    ::= (append <cartesian-product-helper> <cartesian-product>)
+;;<cartesian-product-helper> ::= '() 
+;                           ::= ((list <e-elemento> <elemento>) <cartesian-product-helper>)
+(define cartesian-product
+  (lambda (L1 L2)
+    ;cartesian-product-helper: Elemento x Lista -> Lista
+    ;usage: (cartesian-product-helper e L2) = Tuplas entre un elemento e con cada elemento de L2
+    (define cartesian-product-helper
+      (lambda (e L2)
+        (if (null? L2)
+            empty
+            (cons
+             (list e (car L2))
+             (cartesian-product-helper e (cdr L2))
+             )
+            )
+        ))
+
+    (if (or (null? L1) (null? L2))
+        empty
+        (my-append
+         (cartesian-product-helper (car L1) L2)
+         (cartesian-product (cdr L1) L2)
+         )
+        )
+    )
+  )
+
+;;! Casos de prueba
+;;(cartesian-product '(a b c) '(x y))
+;;(cartesian-product '(p q r) '(5 6 7))
+;;(cartesian-product '(p "HOLA" r) '(5 "MUNDO" 7))
+;;(cartesian-product '(p (2 3) 4) '(5 (6 7) 7))
+
 
 ;;Punto 8
 
@@ -201,6 +280,32 @@
 ; (inversions '(2 3 8 6 1)) ;
 ; (inversions '(4 3 2 1)) ;
 ; (inversions '(10 50 70 200)) ;
+
+;* PUNTO 10
+;; up: Lista -> Lista
+;; Usage: (up L) = Lista similar a L pero se remueve un nivel de paréntesis (si lo tiene)
+;; a cada elemento del nivel más alto de la lista.
+;; Gramatica
+;; <up> ::= '()
+;;      ::= (<elemento> <up>)
+;;
+(define up
+  (lambda (L)
+    (if (null? L)
+        empty
+        (if (list? (car L)) (my-append (car L)(up (cdr L)))
+            (cons (car L) (up (cdr L)))
+            )
+        )
+    )
+  )
+
+;;! Casos de prueba
+;;(up '((1 2) (3 4)))
+;;(up '((x (y)) z))
+;;(up '((1 2 3)4)
+;;(up '(("ES" "UNA" "LISTA")4 (K ("LISTA" "BAJA"))))
+
 
 ;;Punto 11
 ;; Recibe una función F y dos listas L1 y L2, y devuelve una nueva lista 

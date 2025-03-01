@@ -37,6 +37,14 @@
 ;* PUNTO 2
 ;; Recibe una lista `L` y devuelve una nueva lista donde cada elemento de `L`
 ;; es colocado dentro de una lista adicional, aumentando su nivel de paréntesis.
+;; Coloca cada elemento de una lista dentro de una lista adicional.
+;; <down> ::= (down <list>)
+;; <list> ::= '() | (cons <element> <list>)
+;; <element> ::= <atom> | <list>
+;; <atom> ::= número | símbolo | string | booleano
+;; <cases> ::= (cond 
+;;                [(null? <list>) '()] 
+;;                [else (cons (list (car <list>)) (down (cdr <list>)))])
 
 (define down 
   (lambda (L) 
@@ -116,6 +124,15 @@
 
 ;;Punto 5
 ;;List-index es una función que recibe un predicado y una lista, esta función devuelve
+;; Devuelve el índice del primer elemento en la lista que satisface el predicado.
+;; <list-index> ::= (list-index <predicate> <list>)
+;; <predicate> ::= función_unaria
+;; <list> ::= '() | (cons <element> <list>)
+;; <element> ::= número | símbolo | string | booleano | <list>
+;; <cases> ::= (cond 
+;;                [(null? <list>) #f] 
+;;                [(<predicate> (car <list>)) <acc>]
+;;                [else (list-index <predicate> (cdr <list>) (+ <acc> 1))])
 
 (define list-index
   (lambda (P L)
@@ -214,10 +231,22 @@
 
 
 ;;Punto 8
-
 ;; mapping: (X -> Y) Lista Lista -> Lista
 ;; Recibe una función `F`, dos listas `L1` y `L2`, y devuelve una lista de pares
 ;; donde `F` aplicado a un elemento de `L1` es equivalente al elemento correspondiente de `L2`.
+;; Filtra pares (x, y) donde F(x) == y en listas paralelas.
+;; <mapping> ::= (mapping <function> <list1> <list2>)
+;; <function> ::= función_unaria
+;; <list1> ::= '() | (cons <element1> <list1>)
+;; <list2> ::= '() | (cons <element2> <list2>)
+;; <element1> ::= número | símbolo | string | booleano
+;; <element2> ::= número | símbolo | string | booleano
+;; <cases> ::= (cond 
+;;                [(or (null? <list1>) (null? <list2>)) '()] 
+;;                [(eqv? (<function> (car <list1>)) (car <list2>))
+;;                    (cons (list (car <list1>) (car <list2>)) 
+;;                          (mapping <function> (cdr <list1>) (cdr <list2>)))]
+;;                [else (mapping <function> (cdr <list1>) (cdr <list2>))])
 
 (define mapping
   (lambda (F L1 L2)
@@ -313,6 +342,17 @@
 ;;Punto 11
 ;; Recibe una función F y dos listas L1 y L2, y devuelve una nueva lista 
 ;; aplicando F a cada par de elementos correspondientes de L1 y L2
+;; Aplica F a cada par de elementos de L1 y L2 para crear una nueva lista.
+;; <zip> ::= (zip <binary-function> <list1> <list2>)
+;; <binary-function> ::= función_binaria
+;; <list1> ::= '() | (cons <element1> <list1>)
+;; <list2> ::= '() | (cons <element2> <list2>)
+;; <element1> ::= número | símbolo | string | booleano
+;; <element2> ::= número | símbolo | string | booleano
+;; <cases> ::= (cond 
+;;                [(or (null? <list1>) (null? <list2>)) '()] 
+;;                [else (cons (<binary-function> (car <list1>) (car <list2>)) 
+;;                           (zip <binary-function> (cdr <list1>) (cdr <list2>)))])
 
 (define zip
   (lambda (F L1 L2)
@@ -393,6 +433,19 @@
 ;; Recibe un número n y un Árbol Binario de Búsqueda (`BST`).
 ;; Retorna una lista de símbolos left o right que representan el camino
 ;; para encontrar n en el árbol.
+;; Encuentra la ruta (left o right) para ubicar un número en un BST.
+;; <path> ::= (path <number> <BST>)
+;; <BST> ::= '() | (cons <number> (cons <left-subtree> (cons <right-subtree> '())))
+;; <left-subtree> ::= <BST>
+;; <right-subtree> ::= <BST>
+;; <number> ::= número
+;; <cases> ::= (cond 
+;;                [(null? <BST>) '()] 
+;;                [(= <number> (car <BST>)) '()]
+;;                [(< <number> (car <BST>)) 
+;;                    (cons 'left (path <number> (cadr <BST>)))]
+;;                [(> <number> (car <BST>)) 
+;;                    (cons 'right (path <number> (caddr <BST>)))])
 
 (define path
   (lambda (n BST)
@@ -474,6 +527,16 @@
 ;; Recibe una matriz mat y un vector vec que devuelve una nueva matriz
 ;; donde cada elemento de una fila de mat ha sido multiplicado escalarmente
 ;; por el elemento correspondiente del vec.
+;; Multiplica cada fila de la matriz por el vector dado.
+;; <prod-scalar-matriz> ::= (prod-scalar-matriz <matrix> <vector>)
+;; <matrix> ::= '() | (cons <row> <matrix>)
+;; <row> ::= '() | (cons <number> <row>)
+;; <vector> ::= '() | (cons <number> <vector>)
+;; <number> ::= número
+;; <cases> ::= (cond 
+;;                [(null? <matrix>) '()] 
+;;                [else (cons (map * (car <matrix>) <vector>) 
+;;                           (prod-scalar-matriz (cdr <matrix>) <vector>))])
 
 (define prod-scalar-matriz
   (lambda (mat vec)
@@ -481,6 +544,13 @@
         '()
         (cons (map * (car mat) vec)  ;; Multiplicamos fila por fila con el vector
               (prod-scalar-matriz (cdr mat) vec)))))  ;; Recurrimos con la siguiente fila
+
+;; Casos de Prueba
+;;(prod-scalar-matriz '((1 1) (2 2)) '(2 3))
+;;(prod-scalar-matriz '((1 1) (2 2) (3 3)) '(2 3))
+;;(prod-scalar-matriz '((1 2) (3 4)) '(2 3))  
+;;(prod-scalar-matriz '((1 0 4) (2 5 3)) '(2 3 1))  
+;;(prod-scalar-matriz '((10 20 30) (40 50 60)) '(1 2 3))  
 
 ; 18. pascal N ;
 ; <pascal> ::= (define (pascal <n>) <cases>) ;

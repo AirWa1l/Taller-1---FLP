@@ -524,26 +524,39 @@
 
 
 ;;Punto 17
-;; Recibe una matriz mat y un vector vec que devuelve una nueva matriz
-;; donde cada elemento de una fila de mat ha sido multiplicado escalarmente
-;; por el elemento correspondiente del vec.
-;; Multiplica cada fila de la matriz por el vector dado.
-;; <prod-scalar-matriz> ::= (prod-scalar-matriz <matrix> <vector>)
-;; <matrix> ::= '() | (cons <row> <matrix>)
-;; <row> ::= '() | (cons <number> <row>)
-;; <vector> ::= '() | (cons <number> <vector>)
-;; <number> ::= número
-;; <cases> ::= (cond 
-;;                [(null? <matrix>) '()] 
-;;                [else (cons (map * (car <matrix>) <vector>) 
-;;                           (prod-scalar-matriz (cdr <matrix>) <vector>))])
+;;Función auxiliar
+;;<prod-scalar-matriz> ::= (prod-scalar-matriz <matrix> <vector>)
+;;<matrix> ::= '() | (cons <row> <matrix>)
+;;<row> ::= '() | (cons <number> <row>)
+;;<vector> ::= '() | (cons <number> <vector>)
+;;<number> ::= número
+;;<cases> ::= (cond 
+;;               [(null? <matrix>) '()] 
+;;               [else (cons (prod-scalar-fila (car <matrix>) <vector>) 
+;;                          (prod-scalar-matriz (cdr <matrix>) <vector>))])
 
-(define prod-scalar-matriz
-  (lambda (mat vec)
-    (if (null? mat)  ;; Si la matriz está vacía, retornamos una lista vacía
-        '()
-        (cons (map * (car mat) vec)  ;; Multiplicamos fila por fila con el vector
-              (prod-scalar-matriz (cdr mat) vec)))))  ;; Recurrimos con la siguiente fila
+(define (multiplicar-fila fila vec)
+  (if (null? fila)
+      '()
+      (cons (* (car fila) (car vec)) 
+            (multiplicar-fila (cdr fila) (cdr vec)))))
+
+;;<prod-scalar-fila> ::= (prod-scalar-fila <row> <vector>)
+;;<row> ::= '() | (cons <number> <row>)
+;;<vector> ::= '() | (cons <number> <vector>)
+;;<number> ::= número
+;;<cases> ::= (cond 
+;;               [(or (null? <row>) (null? <vector>)) '()]
+;;               [else (cons (* (car <row>) (car <vector>)) 
+;;                          (prod-scalar-fila (cdr <row>) (cdr <vector>)))])
+
+(define (prod-scalar-matriz mat vec)
+  (if (null? mat)
+      '()
+      (cons (multiplicar-fila (car mat) vec)
+            (prod-scalar-matriz (cdr mat) vec))))
+
+
 
 ;; Casos de Prueba
 ;;(prod-scalar-matriz '((1 1) (2 2)) '(2 3))

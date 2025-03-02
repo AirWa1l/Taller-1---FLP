@@ -2,6 +2,10 @@
 
 ; Taller 1 - FLP;
 
+; Jose Adrian Marin Ordoñez - 2126988 ;
+; Michael Ramirez Suriel - 2122236 ;
+; Juan Fernando Calle Sanchez - 2127464 ;
+
 ;; Funciones Auxiliares
 ;; my-append: Lista, Lista -> Lista
 ;; Uso: (my-append L1 L2) -> Lista de elementos de L1 y L2

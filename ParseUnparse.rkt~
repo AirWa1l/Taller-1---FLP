@@ -1,5 +1,0 @@
-#lang eopl
-; Autores: Juan Fernando Calle Sanchez - 2127464
-;          Michael Ramirez Suriel - 202122236
-;          Jose Adrian Marin Ordoñez - 2126988
-; Implementación de circuitos lógicos usando datatypes en Racket

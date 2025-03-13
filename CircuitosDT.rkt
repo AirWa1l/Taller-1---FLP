@@ -25,10 +25,10 @@
 ; Representa los diferentes tipos de operaciones lógicas que puede realizar una compuerta.
 ; <type> ::= and | or | not | xor
 (define-datatype type type?
-  (and)
-  (or)
-  (not)
-  (xor))
+  (and−type)
+  (or−type)
+  (not−type)
+  (xor−type))
 
 ; Definición de lista de entradas (input_list)
 ; <input_list> ::= empty | <bool> <input_list> | <gate_ref> <input_list>
@@ -46,22 +46,22 @@
 ; A -> (NOT A) -> SALIDA(G1)
 (a-circuit
         (no-empty-gate-list 
-        (a-gate 'G1 (not) (no-empty-gate-ref 'A (empty-input-list))) 
+        (a-gate 'G1 (not−type) (no-empty-gate-ref 'A (empty-input-list))) 
         (empty-gate-list)))
 
 ; Ejemplo 2: Circuito AND simple
 ; (A AND B) -> SALIDA (G2)         
 (a-circuit
         (no-empty-gate-list 
-        (a-gate 'G2 (and) (no-empty-gate-ref 'A (no-empty-gate-ref 'B (empty-input-list))))  
+        (a-gate 'G2 (and−type) (no-empty-gate-ref 'A (no-empty-gate-ref 'B (empty-input-list))))  
         (empty-gate-list)))
 ; Ejemplo 3: Combinación de compuertas
 ; (A OR B) -> G3 -> (NOT G3) -> SALIDA (G4)
 (a-circuit
         (no-empty-gate-list 
-        (a-gate 'G3 (or) (no-empty-gate-ref 'A (no-empty-gate-ref 'B (empty-input-list))))  
+        (a-gate 'G3 (or−type) (no-empty-gate-ref 'A (no-empty-gate-ref 'B (empty-input-list))))  
         (no-empty-gate-list
-        (a-gate 'G4 (not) (no-empty-gate-ref 'G3 (empty-input-list)))
+        (a-gate 'G4 (not−type) (no-empty-gate-ref 'G3 (empty-input-list)))
         (empty-gate-list))))
 
 ; Ejemplo 4: Implementación de XOR sin compuerta XOR
@@ -70,11 +70,11 @@
 ; (G1 AND G3) -> G4 -> SALIDA
 (a-circuit
         (no-empty-gate-list 
-        (a-gate 'G1 (or) (no-empty-gate-ref 'A (no-empty-gate-ref 'B (empty-input-list))))  
+        (a-gate 'G1 (or−type) (no-empty-gate-ref 'A (no-empty-gate-ref 'B (empty-input-list))))  
         (no-empty-gate-list
-        (a-gate 'G2 (and) (no-empty-gate-ref 'A (no-empty-gate-ref 'B (empty-input-list))))
+        (a-gate 'G2 (and−type) (no-empty-gate-ref 'A (no-empty-gate-ref 'B (empty-input-list))))
         (no-empty-gate-list
-        (a-gate 'G3 (not) (no-empty-gate-ref 'G2 (empty-input-list)))
+        (a-gate 'G3 (not−type) (no-empty-gate-ref 'G2 (empty-input-list)))
         (no-empty-gate-list
-        (a-gate 'G4 (and) (no-empty-gate-ref 'G1 (no-empty-gate-ref 'G3 (empty-input-list))))
+        (a-gate 'G4 (and−type) (no-empty-gate-ref 'G1 (no-empty-gate-ref 'G3 (empty-input-list))))
         (empty-gate-list))))))

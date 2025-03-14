@@ -100,3 +100,60 @@
     [(boolean? inp) (bool-input inp)]
     [(symbol? inp) (ref-input inp)]
     [else (bool-input #f)]))
+; ----------------------------------------- ;
+; UNPARSEBNF
+; ----------------------------------------- ;
+
+; Inicialmente, recibimos una instancia a la que llamaremos circuit- :
+; parse y usamos cases para verificar si este es de tipo a-circuit ;
+; y extraemos el campo gate del circuito y lo convertimos en un lista ;
+; con la estructura circuit compuertas, por último llamamos a ;
+; unparse-gate para convertir la compuerta ;
+(define (UNPARSEBNF circuit-parse)
+  (cases circuit circuit-parse
+    (a-circuit (gate) (list 'circuit (list 'gate_list (unparse-gate gate))))))
+
+
+; Aqui sencillamente recibimos la compuerta g y la evaluamos con cases ;
+; verificando que sea de tipo a-gate, si lo es extraemos name, type ;
+; e inputs y devolvemos una lista, llamaos a unparse-gate-type y ;
+; a unparse-input-list para convertir los datos correspondientes ;
+(define (unparse-gate g)
+  (cases gate g
+    (a-gate (name type inputs)
+      (list 'gate
+            name
+            (unparse-gate-type type)
+            (cons 'input_list (unparse-input-list inputs))))))
+
+
+; En esta función recibimos gt que representa el tipo de compuerta ;
+; comparamos y devolvemos o un not, and o or dependiendo del caso ;
+
+(define (unparse-gate-type gt)
+  (cases gate-type gt
+    (not-type () '(type not))
+    (and-type () '(type and))
+    (or-type () '(type or))
+    (xor-type () '(type xor))
+    (else '(type ERROR))))  ;; Devolvemos un error si no se reconoce el tipo
+
+
+
+; Convertiremos una lista de entradas ilist en la estructura que ;
+; definimos, en caso de que sea vacía nos devolverá una lista vacia ;
+; pero si esta tiene elementos, tomamos el 1er elemento y le aplicamos ;
+; unparse-input, se agregar a una nueva lista y llamamos a unparse- ;
+; input-list y hacemos lo mismo con el resto de la lista ;
+(define (unparse-input-list ilist)
+  (if (null? ilist) '()  
+      (cons (unparse-input (car ilist)) 
+            (unparse-input-list (cdr ilist)))))
+
+; Finalmente, recibirmos un inp que es una entrada de la compuerta ;
+; Ysamos los cases para identificar los 2 tipos de entreda y dependdiendo ;
+; del caso devolvemos val o name "
+(define (unparse-input inp)
+  (cases a-input inp
+    (bool-input (val) val)
+    (ref-input (name) name)))

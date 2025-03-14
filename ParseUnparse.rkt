@@ -1,4 +1,5 @@
 #lang eopl
+
 ; Autores : Juan Fernando Calle Sanchez - 2127464 ;
 ;           Michael Ramirez Suriel - 2122236 ;
 ;           Jose Adrian Marin Ordoñez - 2126988 ;
@@ -8,18 +9,14 @@
 ; Definición de estructuras de datos ;
 
 ; Definición del tipo de dato circuito
-; <circuit> ::= '(circuit <gate-list>)
 (define-datatype circuit circuit?
-  (a-circuit (gate_list gate?)))
+  (a-circuit (glist (list-of gate?)))) ;; Asegurar que glist es una lista de compuertas
 
 ; Definición del tipo de dato compuerta lógica ;
-; <gate> ::= '(gate <name> <gate-type> <inputs>) ;
-; <name ::= <symbol>
 (define-datatype gate gate?
-  (a-gate (name symbol?) (type gate-type?) (inputs list?)))
+  (a-gate (name symbol?) (type gate-type?) (inputs (list-of a-input?))))
 
 ; Definición del tipo de compuerta lógica ;
-; <gate-type> ::= 'not | 'and | 'or
 (define-datatype gate-type gate-type?
   (not-type)
   (and-type)
@@ -27,9 +24,6 @@
   (xor-type))
 
 ; Definición de entradas de las compuertas lógicas ;
-; <a-input> ::= <bool-input> | <ref-input> ;
-; <bool-input> ::= <boolean> ;
-; <ref-input> ::= <symbol>
 (define-datatype a-input a-input?
   (bool-input (val boolean?))
   (ref-input (name symbol?)))
@@ -37,64 +31,41 @@
 ; --------------------------------------------------------------------
 ; Funciones PARSEBNF y UNPARSEBNF ;
 ; --------------------------------------------------------------------
-; PARSEBNF ;
-; -------------------------------------------------------------------- ;
 
-; Inicialmente, verificamos si la lista lst representa un circuito válido ;
-; mirando si este comienza con la palabra circuit, si es válido ;
-; obtendremos la primera compuerta lógica de la lista usando parse- ;
-; first-gate, y si no, devolvemos una compuerta de not-type sin entradas ;
 (define (PARSEBNF lst)
   (if (and (pair? lst) (eq? (car lst) 'circuit))
-      (a-circuit (parse-first-gate (cadr lst)))
-      (eopl:error 'parse-circuit "Formato incorrecto de circuito: ~s" lst)))
+      (a-circuit (parse-gate-list (cadr lst)))
+      (eopl:error 'PARSEBNF "Formato incorrecto de circuito: ~s" lst)))
 
-; En este caso, recibimos una lista de compuertas glist, y comprobamos ;
-; si esta lista comienza con la palabra clave gate_list, la cual no ;
-; tomaremos en cuenta y buscará la primera compuerta válida de la lista ;
-; usando parse-gate ;
-(define (parse-first-gate glist)
+(define (parse-gate-list glist)
   (if (and (pair? glist) (eq? (car glist) 'gate_list))
-      (parse-first-gate (cdr glist))
-      (parse-gate (car glist))))
+      (parse-gate-list-helper (cdr glist)) 
+      (eopl:error 'parse-gate-list "Formato incorrecto para gate_list: ~s" glist)))
 
-; Aqui, verificamos si g es efectivamente una compuerta valida y esto ;
-; lo comprobamos pues comenzará por la palabra gate, posteriormente ;
-; extraerá el nombre de la compuerta, el tipo y por último la lista de ;
-; entradas, si g no es válida devolveremos un not-type sin entradas ;
+(define (parse-gate-list-helper gates)
+  (if (null? gates)
+      '() ;; Retorna una lista vacía
+      (cons (parse-gate (car gates)) (parse-gate-list-helper (cdr gates))))) 
+
 (define (parse-gate g)
   (if (and (pair? g) (eq? (car g) 'gate))
-      (a-gate (cadr g) (parse-gate-type (cadr(caddr g))) (parse-input-list (cadddr g)))
-      (a-gate 'unknown (not-type) '())))
+      (a-gate (cadr g) (parse-gate-type (cadr (caddr g))) (parse-input-list (cadddr g)))
+      (eopl:error 'parse-gate "Formato incorrecto de compuerta: ~s" g)))
 
-; Aquí traduciremos el tipo de compuerta gt a una estructura que ;
-; definimos, en este caso not, and y or, tiene el mismo not-type que ;
-; casos anteriores ;
 (define (parse-gate-type gt)
-  (cond
-    [(eq? gt 'not) (not-type)]
-    [(eq? gt 'and) (and-type)]
-    [(eq? gt 'or) (or-type)]
-    [(eq? gt 'xor) (xor-type)]
-    [else (eopl:error 'parse-gate-type 
-                      "Tipo de operación no válido en la gramática: ~s" gt)]))
+  (case gt
+    [(not) (not-type)]
+    [(and) (and-type)]
+    [(or) (or-type)]
+    [(xor) (xor-type)]
+    [else (eopl:error 'parse-gate-type "Tipo de operación no válido: ~s" gt)]))
 
-
-; Convertiremos una lista de entradas ilist en la estructura que ;
-; definimos, en caso de que sea vacía nos devolverá una lista vacia ;
-; pero si esta tiene elementos, sencillamente convertimos cada ;
-; entrada con parse-input y la almacenaremos en una nueva lista ;
 (define (parse-input-list ilist)
   (cond
     [(null? ilist) '()] 
     [(eq? (car ilist) 'input_list) (parse-input-list (cdr ilist))]
     [else (cons (parse-input (car ilist)) (parse-input-list (cdr ilist)))]))
 
-; Por último, convertiremos un valor de entrada inp en el formato ;
-; definido, y miramos los casos, en caso de que sea un booleano ;
-; lo alamcenaremos en un bool-input, si es un simbolo en un ;
-; ref-input y si es un valor no válido "y para evitar que estalle el ;
-; programa" lo tratamos como un bool-input con valor #f por defecto ;
 (define (parse-input inp)
   (cond
     [(boolean? inp) (bool-input inp)]
@@ -103,21 +74,23 @@
 ; ----------------------------------------- ;
 ; UNPARSEBNF
 ; ----------------------------------------- ;
-
 ; Inicialmente, recibimos una instancia a la que llamaremos circuit- :
 ; parse y usamos cases para verificar si este es de tipo a-circuit ;
-; y extraemos el campo gate del circuito y lo convertimos en un lista ;
-; con la estructura circuit compuertas, por último llamamos a ;
-; unparse-gate para convertir la compuerta ;
+; y extraemos el campo gate-list y lo procesamos del circuito y lo convertimos en un lista ;
+; con la estructura circuit gate_list compuertas, por último llamamos a ;
+; unparse-gate-list para convertir la lista de compuertas ;
 (define (UNPARSEBNF circuit-parse)
   (cases circuit circuit-parse
-    (a-circuit (gate) (list 'circuit (list 'gate_list (unparse-gate gate))))))
+    (a-circuit (gate-list)
+      (list 'circuit (cons 'gate_list (unparse-gate-list gate-list)))))) 
 
+; Procesa una lista de compuertas y las convierte a su formato de salida
+(define (unparse-gate-list gates)
+  (if (null? gates)
+      '()
+      (cons (unparse-gate (car gates)) (unparse-gate-list (cdr gates))))) ;; Recorre recursivamente la lista de compuertas
 
-; Aqui sencillamente recibimos la compuerta g y la evaluamos con cases ;
-; verificando que sea de tipo a-gate, si lo es extraemos name, type ;
-; e inputs y devolvemos una lista, llamaos a unparse-gate-type y ;
-; a unparse-input-list para convertir los datos correspondientes ;
+;; Procesa una sola compuerta
 (define (unparse-gate g)
   (cases gate g
     (a-gate (name type inputs)
@@ -126,34 +99,66 @@
             (unparse-gate-type type)
             (cons 'input_list (unparse-input-list inputs))))))
 
-
-; En esta función recibimos gt que representa el tipo de compuerta ;
-; comparamos y devolvemos o un not, and o or dependiendo del caso ;
-
+; Convierte el tipo de compuerta
 (define (unparse-gate-type gt)
   (cases gate-type gt
     (not-type () '(type not))
     (and-type () '(type and))
     (or-type () '(type or))
     (xor-type () '(type xor))
-    (else '(type ERROR))))  ;; Devolvemos un error si no se reconoce el tipo
+    (else '(type ERROR)))) ;; Retorna un error si no reconoce el tipo
 
-
-
-; Convertiremos una lista de entradas ilist en la estructura que ;
-; definimos, en caso de que sea vacía nos devolverá una lista vacia ;
-; pero si esta tiene elementos, tomamos el 1er elemento y le aplicamos ;
-; unparse-input, se agregar a una nueva lista y llamamos a unparse- ;
-; input-list y hacemos lo mismo con el resto de la lista ;
+;; Convierte una lista de entradas
 (define (unparse-input-list ilist)
-  (if (null? ilist) '()  
+  (if (null? ilist) '()
       (cons (unparse-input (car ilist)) 
             (unparse-input-list (cdr ilist)))))
 
-; Finalmente, recibirmos un inp que es una entrada de la compuerta ;
-; Ysamos los cases para identificar los 2 tipos de entreda y dependdiendo ;
-; del caso devolvemos val o name "
+;; Convierte una entrada individual
 (define (unparse-input inp)
   (cases a-input inp
     (bool-input (val) val)
     (ref-input (name) name)))
+
+; --------------------------------------------------------------------
+; Pruebas ;
+; -------------------------------------------------------------------- 
+; Ejemplo 1: Circuito con una compuerta NOT
+; A -> (NOT A) -> SALIDA(G1)
+(PARSEBNF '(circuit
+                  (gate_list 
+                  (gate G1 (type not) (input_list A )))))
+(UNPARSEBNF(PARSEBNF '(circuit
+                  (gate_list 
+                  (gate G1 (type not) (input_list A ))))))
+; Ejemplo 2: Circuito AND simple
+; (A AND B) -> SALIDA (G2)         
+(PARSEBNF '(circuit
+                  (gate_list 
+                  (gate G2 (type and) (input_list A B)))))
+
+(UNPARSEBNF (PARSEBNF '(circuit
+                  (gate_list 
+                  (gate G2 (type and) (input_list A B))))))         
+; Ejemplo 3: Combinación de compuertas
+; (A OR B) -> G3 -> (NOT G3) -> SALIDA (G4)
+(PARSEBNF '(circuit
+                  (gate_list 
+                  (gate G3 (type or) (input_list A B))
+                  (gate G4 (type not) (input_list G3)))))
+
+(UNPARSEBNF (PARSEBNF '(circuit
+                               (gate_list 
+                               (gate G3 (type or) (input_list A B))
+                               (gate G4 (type not) (input_list G3))))))
+; Ejemplo 4: Implementación de XOR sin compuerta XOR
+; (A OR B) -> G1
+; (A AND B) -> G2 -> (NOT G2) -> G3
+; (G1 AND G3) -> G4 -> SALIDA
+(UNPARSEBNF (PARSEBNF 
+'(circuit
+        (gate_list 
+        (gate G1 (type or) (input_list A B))
+        (gate G2 (type or) (input_list A B #f))
+        (gate G4 (type or) (input_list A #t))
+        (gate G1 (type or) (input_list #t G4))))))

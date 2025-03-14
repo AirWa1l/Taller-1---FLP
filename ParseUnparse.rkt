@@ -46,7 +46,7 @@
 (define (PARSEBNF lst)
   (if (and (pair? lst) (eq? (car lst) 'circuit))
       (a-circuit (parse-first-gate (cadr lst)))
-      (a-circuit (a-gate 'unknown (not-type) '()))))  
+      (eopl:error 'parse-circuit "Formato incorrecto de circuito: ~s" lst)))
 
 ; En este caso, recibimos una lista de compuertas glist, y comprobamos ;
 ; si esta lista comienza con la palabra clave gate_list, la cual no ;

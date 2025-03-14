@@ -151,21 +151,18 @@
                                (gate_list 
                                (gate G3 (type or) (input_list A B))
                                (gate G4 (type not) (input_list G3))))))
-; Ejemplo 4: Implementación de XOR sin compuerta XOR
-; (A OR B) -> G1
-; (A AND B) -> G2 -> (NOT G2) -> G3
-; (G1 AND G3) -> G4 -> SALIDA
+; Ejemplo 4: 
 (PARSEBNF 
 '(circuit
         (gate_list 
-        (gate G1 (type not) (input_list A B))
+        (gate G1 (type or) (input_list A B))
         (gate G2 (type and) (input_list A B #f))
         (gate G4 (type xor) (input_list A #t))
-        (gate G1 (type or) (input_list #t G4)))))
+        (gate G4 (type not) (input_list #t G41)))))
 (UNPARSEBNF (PARSEBNF 
 '(circuit
         (gate_list 
-        (gate G1 (type not) (input_list A B))
+        (gate G1 (type or) (input_list A B))
         (gate G2 (type and) (input_list A B #f))
-        (gate G4 (type xor) (input_list A #t))
-        (gate G1 (type or) (input_list #t G4))))))
+        (gate G3 (type xor) (input_list A #t))
+        (gate G4 (type not) (input_list #t G41))))))

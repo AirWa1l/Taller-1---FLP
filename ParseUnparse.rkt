@@ -155,10 +155,17 @@
 ; (A OR B) -> G1
 ; (A AND B) -> G2 -> (NOT G2) -> G3
 ; (G1 AND G3) -> G4 -> SALIDA
+(PARSEBNF 
+'(circuit
+        (gate_list 
+        (gate G1 (type not) (input_list A B))
+        (gate G2 (type and) (input_list A B #f))
+        (gate G4 (type xor) (input_list A #t))
+        (gate G1 (type or) (input_list #t G4)))))
 (UNPARSEBNF (PARSEBNF 
 '(circuit
         (gate_list 
-        (gate G1 (type or) (input_list A B))
-        (gate G2 (type or) (input_list A B #f))
-        (gate G4 (type or) (input_list A #t))
+        (gate G1 (type not) (input_list A B))
+        (gate G2 (type and) (input_list A B #f))
+        (gate G4 (type xor) (input_list A #t))
         (gate G1 (type or) (input_list #t G4))))))

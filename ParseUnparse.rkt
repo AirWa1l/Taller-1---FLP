@@ -7,10 +7,10 @@
 
 ; Definición de estructuras de datos ;
 
-; Definicion dle tipo de dato del circuito ;
-; <circuit> ::= '(circuit <gate>) ;
+; Definición del tipo de dato circuito
+; <circuit> ::= '(circuit <gate-list>)
 (define-datatype circuit circuit?
-  (a-circuit (gate gate?)))
+  (a-circuit (gate_list gate_list?)))
 
 ; Definición del tipo de dato compuerta lógica ;
 ; <gate> ::= '(gate <name> <gate-type> <inputs>) ;

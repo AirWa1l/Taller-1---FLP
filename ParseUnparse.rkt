@@ -6,32 +6,39 @@
 ; de un circuito ;
 
 ; Definición de estructuras de datos ;
-
 ; Definición del tipo de dato circuito
 ; <circuit> ::= '(circuit <gate-list>)
 (define-datatype circuit circuit?
   (a-circuit (gate_list gate_list?)))
 
-; Definición del tipo de dato compuerta lógica ;
-; <gate> ::= '(gate <name> <gate-type> <inputs>) ;
-; <name ::= <symbol>
+; Definición del tipo de dato lista de compuertas
+; <gate-list> ::= (empty) | (<gate> <gate-list>)
+(define-datatype gate_list gate_list?
+  (empty-gate-list)
+  (no-empty-gate-list (first gate?) (rest gate_list?)))
+
+; Definición del tipo de dato compuerta lógica
+; <gate> ::= '(gate <gate_id> <type> <input_list>)
+; <gate_id> ::= <symbol>
 (define-datatype gate gate?
-  (a-gate (name symbol?) (type gate-type?) (inputs list?)))
+  (a-gate (gate_id symbol?) (gate_type type?) (input_list input_list?)))
 
-; Definición del tipo de compuerta lógica ;
-; <gate-type> ::= 'not | 'and | 'or
-(define-datatype gate-type gate-type?
-  (not-type)
-  (and-type)
-  (or-type))
+; Definición de tipos de compuertas lógicas
+; Representa los diferentes tipos de operaciones lógicas que puede realizar una compuerta.
+; <type> ::= and | or | not | xor
+(define-datatype type type?
+  (and−type)
+  (or−type)
+  (not−type)
+  (xor−type))
 
-; Definición de entradas de las compuertas lógicas ;
-; <a-input> ::= <bool-input> | <ref-input> ;
-; <bool-input> ::= <boolean> ;
-; <ref-input> ::= <symbol>
-(define-datatype a-input a-input?
-  (bool-input (val boolean?))
-  (ref-input (name symbol?)))
+; Definición de lista de entradas (input_list)
+; <input_list> ::= empty | <bool> <input_list> | <gate_ref> <input_list>
+; <gate_ref> ::= <symbol>
+(define-datatype input_list input_list?
+  (empty-input-list)
+  (no-empty-bool-input-list (first boolean?) (rest input_list?))
+  (no-empty-gate-ref (first symbol?) (rest input_list?)))
 
 ; --------------------------------------------------------------------
 ; Funciones PARSEBNF y UNPARSEBNF ;

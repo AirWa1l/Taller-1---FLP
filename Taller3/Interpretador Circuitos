@@ -111,39 +111,74 @@
 
 (define init-env
   (lambda ()
-    (extend-env
-      '(x y z True False)
-      (list 4 2 5 
-            (true-val)    ; En lugar de #t
-            (false-val))  ; En lugar de #f
-      (empty-env))))
+    (empty-env)))  ; Ambiente completamente vacío
 
 (define eval-expression
   (lambda (exp env)
+    (display (list "eval-expression: exp=" exp " env=" env "\n"))
     (cases expression exp
-      (lit-exp (datum) datum)
-      (var-exp (id) (apply-env env id))
+      (lit-exp (datum)
+        (display (list "lit-exp: datum=" datum "\n"))
+        datum)
+      (var-exp (id)
+        (display (list "var-exp: id=" id "\n"))
+        (apply-env env id))
       (primapp-exp (prim rands)
         (let ((args (eval-rands rands env)))
+          (display (list "primapp-exp: prim=" prim " args=" args "\n"))
           (apply-primitive prim args)))
       (if-exp (test-exp true-exp false-exp)
-        (if (true-value? (eval-expression test-exp env))
-            (eval-expression true-exp env)
-            (eval-expression false-exp env)))
+        (let ((test-val (eval-expression test-exp env)))
+          (display (list "if-exp: test-val=" test-val "\n"))
+          (if (true-value? test-val)
+              (eval-expression true-exp env)
+              (eval-expression false-exp env))))
       (let-exp (ids rands body)
-        (let ((args (eval-rands rands env)))
-          (eval-expression body
-            (extend-env ids args env))))
+  (let ((args (eval-rands rands env)))
+    (display (list "let-exp: ids=" ids " args=" args "\n"))
+    (display (list "let-exp: Checking args=" (map scheme-value? args) "\n")) ; Depuración
+    (eval-expression body (extend-env ids args env))))
       (circuit-exp (circuit)
-        (eval-circuit circuit env)))))
+  (display (list "circuit-exp: circuit=" circuit "\n"))
+  (let ((circuit-env (eval-circuit circuit env)))
+    (let ((circuit-results (extract-circuit-results circuit-env)))
+      (display (list "circuit-exp: circuit-result= " circuit-results "\n"))
+      (map cadr circuit-results))))))) ; extraer solo los valores ; extraer los resultados
 
+(define extract-circuit-results
+  (lambda (env)
+    (display (list "extract-circuit-results: INICIO env=" env "\n"))
+    (letrec ((extract-recursive
+              (lambda (current-env results)
+                (display (list "extract-circuit-results: recursive INICIO current-env=" current-env " results=" results "\n"))
+                (cases environment current-env
+                  (empty-env-record ()
+                    (display (list "extract-circuit-results: empty-env-record, returning results=" (reverse results) "\n"))
+                    (reverse results))
+                  (extended-env-record (syms vals parent-env)
+                    (display (list "extract-circuit-results: extended-env-record syms=" syms " vals=" vals " parent-env=" parent-env "\n"))
+                    (extract-recursive parent-env (cons (list (car syms) (car vals)) results)))))))
+      (extract-recursive env '()))))
+
+(define type-of
+  (lambda (g)
+    (display (list "type-of: g=" g "\n")) ; Depuración
+    (cases gate g
+      (a-gate (name type inputs) type))))
 (define eval-rands
   (lambda (rands env)
-    (map (lambda (x) (eval-rand x env)) rands)))
+    (display (list "eval-rands: INICIO rands=" rands " env=" env "\n"))
+    (map (lambda (x)
+           (let ((result (eval-rand x env)))
+             (display (list "eval-rands: rand=" x " result=" result "\n"))
+             (if (list? result) (car result) result))) ; Corrección: Extraer el primer elemento si es una lista
+         rands)))
 
 (define eval-rand
   (lambda (rand env)
+    (display (list "eval-rand: INICIO rand=" rand " env=" env "\n"))
     (eval-expression rand env)))
+
 
 (define apply-primitive
   (lambda (prim args)
@@ -157,10 +192,10 @@
         (if (not (= (length args) 1))
             (eopl:error 'apply-primitive "eval-circuit requiere exactamente 1 argumento, recibió ~s" args)
             (let ((circ (car args)))
+              (display (list "apply-primitive (eval-circuit-prim): circ=" circ "\n"))
               (if (circuit? circ)
                   (eval-circuit circ (empty-env))
-                  (eopl:error 'apply-primitive "El argumento para eval-circuit debe ser un circuito")))))
-
+                  circ)))) 
       (connect-circuits-prim ()
         (if (not (= (length args) 2))
             (eopl:error 'apply-primitive "connect-circuits requiere exactamente 2 argumentos, recibió ~s" args)
@@ -201,7 +236,7 @@
 
 (define scheme-value?
   (lambda (v)
-    (or (number? v) (boolean? v) (circuit? v))))
+    (or (number? v) (boolean? v) (circuit? v) (eq? v #f)(eq? v #t) ))) ; Asegura que #f sea reconocido
 
 (define empty-env
   (lambda ()
@@ -209,7 +244,10 @@
 
 (define extend-env
   (lambda (syms vals env)
-    (extended-env-record syms vals env)))
+    (display (list "extend-env: INICIO syms=" syms " vals=" vals " env=" env "\n")) ; Depuración: Inicio de extend-env
+    (let ((new-env (extended-env-record syms vals env)))
+      (display (list "extend-env: FIN new-env=" new-env "\n")) ; Depuración: Fin de extend-env
+      new-env)))
 
 (define apply-env
   (lambda (env sym)
@@ -219,7 +257,9 @@
       (extended-env-record (syms vals env)
         (let ((pos (list-find-position sym syms)))
           (if (number? pos)
-              (list-ref vals pos)
+              (let ((val (list-ref vals pos)))
+                (display (list "Applying env: " sym " -> " val "\n")) ; Depuración
+                val)
               (apply-env env sym)))))))
 
 ;****************************************************************************************
@@ -230,33 +270,36 @@
 (define (get-gate-name g)
   (cases gate g
     (a-gate (name type inputs) name)))
-
 (define (eval-circuit circuit-val env)
   (cases circuit circuit-val
     (a-circuit (gates)
       (eval-gate-list gates env))))
 
-(define (eval-gate-list gates env)
-  (cases gate-list gates
-    (my-gate-list (gate-structs)
-      (if (null? gate-structs)
-          env
-          (let* ((current-gate (car gate-structs))
-                 (gate-result (eval-gate current-gate env))
-                 (gate-name (cases gate current-gate
-                             (a-gate (name type inputs) name)))
-                 (new-env (extend-env (list gate-name)
-                                     (list gate-result)
-                                     env)))
-            (eval-gate-list (my-gate-list (cdr gate-structs)) new-env))))))
-
+(define eval-gate-list
+  (lambda (gates env)
+    (cases gate-list gates
+      (my-gate-list (gate-structs)
+        (if (null? gate-structs)
+            env ; Caso base: no hay compuertas, retorna el ambiente actual
+            (let* ((current-gate (car gate-structs))
+                   (gate-result (eval-gate current-gate env))
+                   (gate-name (car gate-result))
+                   (gate-value (cadr gate-result)))
+              (eval-gate-list (my-gate-list (cdr gate-structs)) (extend-env (list gate-name) (list gate-value) env)))))
+      )))
 (define (eval-gate g env)
+  (display (list "eval-gate: INICIO g=" g " env=" env "\n")) ; Depuración: Inicio de eval-gate
   (cases gate g
     (a-gate (name type input-list)
       (let ((input-values (eval-input-list input-list env)))
-        (apply-gate type input-values)))))
+        (display (list "eval-gate: input-values=" input-values "\n")) ; Depuración: Valores de entrada
+        (let ((result (apply-gate type input-values)))
+          (display (list "eval-gate: result=" result "\n")) ; Depuración: Resultado de apply-gate
+          (display (list "eval-gate: FIN name=" name " result=" result "\n")) ; Depuración: Fin de eval-gate
+          (list name result))))))
 
 (define (eval-input-list input-list-val env)
+  (display (list "eval-input-list: INICIO input-list-val=" input-list-val " env=" env "\n")) ; Depuración: Inicio de eval-input-list
   (cases input-list input-list-val
     (my-input-list (inputs)
       (map (lambda (inp)
@@ -281,10 +324,6 @@
   (lambda (a b)
     (and (or a b) (not (and a b)))))
 
-(define type-of
-  (lambda (g)
-    (cases gate g
-      (a-gate (name type inputs) type))))
 
 (define gate-name
   (lambda (g)
@@ -306,13 +345,12 @@
                   (let ((output-name (string->symbol (string-append (symbol->string name) "-out"))))
                     (a-circuit
                       (append gates1
-                              (list (a-gate output-name 
-                                           type  ; Mantenemos el mismo tipo de compuerta
-                                           (my-input-list (list (ref-input name)))))))))))))))))
-
+                              (list (a-gate output-name
+                                          type
+                                          (my-input-list (list (ref-input name)))))))))))))))))
 
 (define merge-circuits
-  (lambda (circ1 circ2 gate-type) ; Añadimos gate-type como argumento
+  (lambda (circ1 circ2 gate-type)
     (cases circuit circ1
       (a-circuit (gates1)
         (cases circuit circ2
@@ -376,4 +414,17 @@ add1(x)")
 
 (interpretador)
 
-; Debe retornar #f
+;;Ejemplo 1
+;;let C1= (circuit (gate_list (gate G1 not (input_list True))))
+;; in eval-circuit (C1)  ---> Devuelve False 
+
+;;let C2 = (circuit (gate_list(gate G1 and (input_list True True))))
+;;  in eval-circuit (C2)  ---> Devuelve True
+;;let C3 = (circuit (gate_list(gate G1 and (input_list False True))))
+;;  in eval-circuit (C3)  ---> Devuelve false
+
+
+;;let C3 = (circuit (gate_list
+;;                   (gate G1 and (input_list True True))
+;;                   (gate G2 not (input_list G1))))
+;; in eval-circuit (C3)  -->false

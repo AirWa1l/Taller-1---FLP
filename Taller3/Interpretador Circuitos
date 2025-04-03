@@ -143,22 +143,18 @@
   (let ((circuit-env (eval-circuit circuit env)))
     (let ((circuit-results (extract-circuit-results circuit-env)))
       (display (list "circuit-exp: circuit-result= " circuit-results "\n"))
-      (map cadr circuit-results))))))) ; extraer solo los valores ; extraer los resultados
+      (cadr circuit-results))))))) ; extraer solo los valores ; extraer los resultados
 
 (define extract-circuit-results
   (lambda (env)
     (display (list "extract-circuit-results: INICIO env=" env "\n"))
-    (letrec ((extract-recursive
-              (lambda (current-env results)
-                (display (list "extract-circuit-results: recursive INICIO current-env=" current-env " results=" results "\n"))
-                (cases environment current-env
-                  (empty-env-record ()
-                    (display (list "extract-circuit-results: empty-env-record, returning results=" (reverse results) "\n"))
-                    (reverse results))
-                  (extended-env-record (syms vals parent-env)
-                    (display (list "extract-circuit-results: extended-env-record syms=" syms " vals=" vals " parent-env=" parent-env "\n"))
-                    (extract-recursive parent-env (cons (list (car syms) (car vals)) results)))))))
-      (extract-recursive env '()))))
+    (cases environment env
+      (empty-env-record ()
+        (display "extract-circuit-results: environment vacío\n")
+        '())  ; Devuelve lista vacía si no hay bindings
+      (extended-env-record (syms vals parent-env)
+        (display (list "extract-circuit-results: encontrado syms=" syms " vals=" vals "\n"))
+        (list (car syms) (car vals))))))  ; Devuelve lista con el primer par (símbolo valor)
 
 (define type-of
   (lambda (g)
@@ -171,7 +167,7 @@
     (map (lambda (x)
            (let ((result (eval-rand x env)))
              (display (list "eval-rands: rand=" x " result=" result "\n"))
-             (if (list? result) (car result) result))) ; Corrección: Extraer el primer elemento si es una lista
+             result)) ; No extraer el primer elemento
          rands)))
 
 (define eval-rand
@@ -197,13 +193,20 @@
                   (eval-circuit circ (empty-env))
                   circ)))) 
       (connect-circuits-prim ()
-        (if (not (= (length args) 2))
-            (eopl:error 'apply-primitive "connect-circuits requiere exactamente 2 argumentos, recibió ~s" args)
-            (let ((circ1 (car args))
-                  (circ2 (cadr args)))
-              (if (and (circuit? circ1) (circuit? circ2))
-                  (connect-circuits circ1 circ2)
-                  (eopl:error 'apply-primitive "Los argumentos para connect-circuits deben ser circuitos")))))
+  (cond 
+    ; Caso 1: Si solo hay 1 argumento, lo devuelvo directamente
+    [(= (length args) 1)  
+     (car args)]  ; O simplemente (first args) en Racket
+    ; Caso 2: Si hay 2 argumentos, verifico que sean circuitos y los conecto
+    [(= (length args) 2)
+     (let ((circ1 (car args))
+           (circ2 (cadr args)))
+       (if (and (circuit? circ1) (circuit? circ2))
+           (connect-circuits circ1 circ2)
+           (eopl:error 'apply-primitive "Los argumentos deben ser circuitos")))]
+    ; Caso 3: Error si no es 1 ni 2 argumentos
+    [else
+     (eopl:error 'apply-primitive "connect-circuits requiere 1 o 2 argumentos, recibió ~s" args)]))
 
       (merge-circuits-prim ()
         (if (not (= (length args) 2))
@@ -428,3 +431,7 @@ add1(x)")
 ;;                   (gate G1 and (input_list True True))
 ;;                   (gate G2 not (input_list G1))))
 ;; in eval-circuit (C3)  -->false
+
+;;let C1 = (circuit (gate_list (gate G1 not (input_list False))(gate G3 not (input_list G1))))
+;;C2 = (circuit (gate_list (gate G2 not (input_list True))))
+;;  in connect-circuits (C1) (C2)

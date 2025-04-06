@@ -53,6 +53,11 @@
      (expression ("if" expression "then" expression "else" expression) if-exp)
      (expression ("let" (arbno identifier "=" expression) "in" expression) let-exp)
      (expression (circuit) circuit-exp)
+     (expression ("and") and-exp) ; Nueva regla para "and"
+     (expression ("or") or-exp) ; Nueva regla para "or"
+     (expression ("not") not-exp) ; Nueva regla para "not"
+     (expression ("xor") xor-exp) ; Nueva regla para "xor"
+
 
      ; Primitivas
      (primitive ("+") add-prim)
@@ -120,6 +125,10 @@
       (lit-exp (datum) datum)
       (var-exp (id) (apply-env env id))
       (symbol-exp (id) id)  ; <-- Nueva cláusula para símbolos literales como 'G2
+      (and-exp () 'and) ; Manejar "and" como símbolo
+      (or-exp () 'or) ; Manejar "or" como símbolo
+      (not-exp () 'not) ; Manejar "not" como símbolo
+      (xor-exp () 'xor)
       (primapp-exp (prim rands)
         (let ((args (eval-rands rands env)))  ; Siempre evaluamos los argumentos
           (apply-primitive prim args)))
@@ -199,14 +208,15 @@
       (eopl:error 'connect-circuits "Número incorrecto de argumentos: se esperaban exactamente 3, recibió ~a" (length args))))
 
       (merge-circuits-prim ()
-        (if (not (= (length args) 2))
-            (eopl:error 'apply-primitive "merge-circuits requiere exactamente 2 argumentos, recibió ~s" args)
+        (if (not (= (length args) 4)) ; Debe recibir 4 argumentos
+            (eopl:error 'apply-primitive "merge-circuits requiere exactamente 4 argumentos, recibió ~s" args)
             (let ((circ1 (car args))
-                  (circ2 (cadr args)))
-              (if (and (circuit? circ1) (circuit? circ2))
-                  (merge-circuits circ1 circ2)
-                  (eopl:error 'apply-primitive "Los argumentos para merge-circuits deben ser circuitos"))))))))
-
+                  (circ2 (cadr args))
+                  (gate-type-sym (caddr args)) ; Recibe el tipo como símbolo
+                  (new-gate-name (cadddr args)))
+              (if (and (circuit? circ1) (circuit? circ2) (symbol? gate-type-sym) (symbol? new-gate-name))
+                  (merge-circuits circ1 circ2 gate-type-sym new-gate-name)
+                  (eopl:error 'apply-primitive "Argumentos inválidos para merge-circuits"))))))))
 (define true-value?
   (lambda (x)
     (not (or (zero? x) (eq? x #f)))))
@@ -371,18 +381,29 @@
                    (bool-input (val) inp))) ; Mantener la entrada booleana original
                input-list-val))))))
 
-
 (define merge-circuits
-  (lambda (circ1 circ2 gate-type)
+  (lambda (circ1 circ2 gate-type-symbol new-gate-name)
     (cases circuit circ1
-      (a-circuit (gates1)
+      (a-circuit (gates1-struct)
         (cases circuit circ2
-          (a-circuit (gates2)
-            (let* ((last-gate1 (last gates1))
+          (a-circuit (gates2-struct)
+            (let* ((gates1 (cases gate-list gates1-struct (my-gate-list (gates) gates)))
+                   (gates2 (cases gate-list gates2-struct (my-gate-list (gates) gates)))
+                   (last-gate1 (last gates1))
                    (last-gate2 (last gates2))
-                   (new-gate-name (string->symbol "merged-gate"))
-                   (new-gate (a-gate new-gate-name gate-type (my-input-list (list (ref-input (gate-name last-gate1)) (ref-input (gate-name last-gate2)))))))
-              (a-circuit (append gates1 (append gates2 (list new-gate)))))))))))
+                   (gate-type-val (symbol->gate-type gate-type-symbol))
+                   (new-gate (a-gate new-gate-name gate-type-val (my-input-list (list (ref-input (gate-name last-gate1)) (ref-input (gate-name last-gate2)))))))
+              (a-circuit (my-gate-list (append gates1 (append gates2 (list new-gate))))))))))))
+(define symbol->gate-type
+  (lambda (sym)
+    (cond
+      ((eq? sym 'and) (and-type))
+      ((eq? sym 'or) (or-type))
+      ((eq? sym 'not) (not-type))
+      ((eq? sym 'xor) (xor-type))
+      (else (eopl:error 'symbol->gate-type "Tipo de compuerta no válido: ~s" sym)))))
+
+
 
 (define list-find-position
   (lambda (sym los)
@@ -486,3 +507,11 @@ add1(x)")
 ;;                  (gate G1 and (input_list True True))
 ;;                  (gate G2 not (input_list G1))))
 ;;  in eval-circuit(connect-circuits (C1, C2, 'G1))
+
+
+;;let C1 = (circuit (gate_list (gate G4 not (input_list False))
+;;                             (gate G3 not (input_list G4))))
+;;C2 = (circuit (gate_list
+;;                  (gate G1 and (input_list True True))
+;;                  (gate G2 not (input_list G1))))
+;;  in merge-circuits (C1, C2 , and , 'G8)

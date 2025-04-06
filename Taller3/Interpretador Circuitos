@@ -48,6 +48,7 @@
   '((program (expression) a-program)
      (expression (number) lit-exp)
      (expression (identifier) var-exp)
+     (expression ("'" identifier) symbol-exp)  ; Añade esta línea
      (expression (primitive "(" (separated-list expression ",") ")") primapp-exp)
      (expression ("if" expression "then" expression "else" expression) if-exp)
      (expression ("let" (arbno identifier "=" expression) "in" expression) let-exp)
@@ -115,46 +116,40 @@
 
 (define eval-expression
   (lambda (exp env)
-    (display (list "eval-expression: exp=" exp " env=" env "\n"))
     (cases expression exp
-      (lit-exp (datum)
-        (display (list "lit-exp: datum=" datum "\n"))
-        datum)
-      (var-exp (id)
-        (display (list "var-exp: id=" id "\n"))
-        (apply-env env id))
+      (lit-exp (datum) datum)
+      (var-exp (id) (apply-env env id))
+      (symbol-exp (id) id)  ; <-- Nueva cláusula para símbolos literales como 'G2
       (primapp-exp (prim rands)
-        (let ((args (eval-rands rands env)))
-          (display (list "primapp-exp: prim=" prim " args=" args "\n"))
+        (let ((args (eval-rands rands env)))  ; Siempre evaluamos los argumentos
           (apply-primitive prim args)))
       (if-exp (test-exp true-exp false-exp)
         (let ((test-val (eval-expression test-exp env)))
-          (display (list "if-exp: test-val=" test-val "\n"))
           (if (true-value? test-val)
               (eval-expression true-exp env)
               (eval-expression false-exp env))))
       (let-exp (ids rands body)
-  (let ((args (eval-rands rands env)))
-    (display (list "let-exp: ids=" ids " args=" args "\n"))
-    (display (list "let-exp: Checking args=" (map scheme-value? args) "\n")) ; Depuración
-    (eval-expression body (extend-env ids args env))))
-      (circuit-exp (circuit)
-  (display (list "circuit-exp: circuit=" circuit "\n"))
-  (let ((circuit-env (eval-circuit circuit env)))
-    (let ((circuit-results (extract-circuit-results circuit-env)))
-      (display (list "circuit-exp: circuit-result= " circuit-results "\n"))
-      (cadr circuit-results))))))) ; extraer solo los valores ; extraer los resultados
+        (let ((args (eval-rands rands env)))
+          (eval-expression body (extend-env ids args env))))
+      (circuit-exp (circuit) circuit))))
 
-(define extract-circuit-results
+(define extract-circuit-result
   (lambda (env)
-    (display (list "extract-circuit-results: INICIO env=" env "\n"))
+    (display (list "extract-circuit-result: INICIO con env=" env)) (newline)
     (cases environment env
       (empty-env-record ()
-        (display "extract-circuit-results: environment vacío\n")
-        '())  ; Devuelve lista vacía si no hay bindings
+        (display "extract-circuit-result: ambiente vacío, devuelve 0") (newline)
+        0)
       (extended-env-record (syms vals parent-env)
-        (display (list "extract-circuit-results: encontrado syms=" syms " vals=" vals "\n"))
-        (list (car syms) (car vals))))))  ; Devuelve lista con el primer par (símbolo valor)
+        (display (list "extract-circuit-result: syms=" syms " vals=" vals)) (newline)
+        (if (null? syms)
+            (begin
+              (display "extract-circuit-result: syms vacío, devuelve #f") (newline)
+              #f)
+            (begin
+              (display (list "extract-circuit-result: devuelve" (car vals))) (newline)
+              (car vals)))))))
+  ; Devuelve lista con el primer par (símbolo valor)
 
 (define type-of
   (lambda (g)
@@ -186,27 +181,22 @@
       (decr-prim () (- (car args) 1))
       (eval-circuit-prim ()
         (if (not (= (length args) 1))
-            (eopl:error 'apply-primitive "eval-circuit requiere exactamente 1 argumento, recibió ~s" args)
+            (eopl:error 'apply-primitive "eval-circuit requiere exactamente 1 argumento")
             (let ((circ (car args)))
-              (display (list "apply-primitive (eval-circuit-prim): circ=" circ "\n"))
               (if (circuit? circ)
-                  (eval-circuit circ (empty-env))
+                  (let ((circuit-env (eval-circuit circ (empty-env))))
+                    (let ((result (extract-circuit-result circuit-env)))
+                      result))
                   circ)))) 
       (connect-circuits-prim ()
-  (cond 
-    ; Caso 1: Si solo hay 1 argumento, lo devuelvo directamente
-    [(= (length args) 1)  
-     (car args)]  ; O simplemente (first args) en Racket
-    ; Caso 2: Si hay 2 argumentos, verifico que sean circuitos y los conecto
-    [(= (length args) 2)
-     (let ((circ1 (car args))
-           (circ2 (cadr args)))
-       (if (and (circuit? circ1) (circuit? circ2))
-           (connect-circuits circ1 circ2)
-           (eopl:error 'apply-primitive "Los argumentos deben ser circuitos")))]
-    ; Caso 3: Error si no es 1 ni 2 argumentos
-    [else
-     (eopl:error 'apply-primitive "connect-circuits requiere 1 o 2 argumentos, recibió ~s" args)]))
+  (if (= (length args) 3)
+      (let ((circ1 (car args))
+            (circ2 (cadr args))
+            (target-gate-name (caddr args)))
+        (if (and (circuit? circ1) (circuit? circ2) (symbol? target-gate-name))
+            (connect-circuits circ1 circ2 target-gate-name)
+            (eopl:error 'connect-circuits "Argumentos inválidos: se esperaban dos circuitos y un símbolo")))
+      (eopl:error 'connect-circuits "Número incorrecto de argumentos: se esperaban exactamente 3, recibió ~a" (length args))))
 
       (merge-circuits-prim ()
         (if (not (= (length args) 2))
@@ -278,6 +268,7 @@
     (a-circuit (gates)
       (eval-gate-list gates env))))
 
+
 (define eval-gate-list
   (lambda (gates env)
     (cases gate-list gates
@@ -335,22 +326,51 @@
 
 ; 
 
-
 (define connect-circuits
-  (lambda (circ1 circ2)
+  (lambda (circ1 circ2 target-gate-name)
+    (display (list "connect-circuits: circ1=" circ1 " circ2=" circ2 " target-gate-name=" target-gate-name)) (newline)
     (cases circuit circ1
-      (a-circuit (gates1)
-        (cases circuit circ2
-          (a-circuit (gates2)
-            (let ((last-gate (last gates1)))
-              (cases gate last-gate
-                (a-gate (name type inputs)
-                  (let ((output-name (string->symbol (string-append (symbol->string name) "-out"))))
+      (a-circuit (gates1-struct)
+        (let ((gates1 (cases gate-list gates1-struct (my-gate-list (gates) gates))))
+          (display (list "connect-circuits: gates1=" gates1)) (newline)
+          (let ((output-gate (last gates1)))
+            (display (list "connect-circuits: output-gate=" output-gate)) (newline)
+            (cases circuit circ2
+              (a-circuit (gates2-struct)
+                (let ((gates2 (cases gate-list gates2-struct (my-gate-list (gates) gates))))
+                  (display (list "connect-circuits: gates2=" gates2)) (newline)
+                  (let ((mapped-gates
+                          (map (lambda (g)
+                                 (cases gate g
+                                   (a-gate (name type inputs)
+                                     (display (list "connect-circuits: gate-name=" name " inputs=" inputs)) (newline)
+                                     (if (eqv? name target-gate-name)
+                                         (begin
+                                           (display (list "connect-circuits: replacing gate=" name " with output-gate=" output-gate)) (newline)
+                                           output-gate)
+                                         (begin
+                                           (display (list "connect-circuits: replacing refs in gate=" name)) (newline)
+                                           (a-gate name type (replace-refs inputs target-gate-name (gate-name output-gate))))))))
+                               gates2)))
+                    (display (list "connect-circuits: mapped-gates=" mapped-gates)) (newline)
                     (a-circuit
-                      (append gates1
-                              (list (a-gate output-name
-                                          type
-                                          (my-input-list (list (ref-input name)))))))))))))))))
+                      (my-gate-list
+                        (append gates1 mapped-gates)))))))))))))
+
+(define replace-refs
+  (lambda (inputs target-name new-name)
+    (cases input-list inputs
+      (my-input-list (input-list-val)
+        (my-input-list
+          (map (lambda (inp)
+                 (cases input inp
+                   (ref-input (old-name)
+                     (if (eqv? old-name target-name)
+                         (ref-input new-name) ; Reemplazar la referencia
+                         inp)) ; Mantener la referencia original
+                   (bool-input (val) inp))) ; Mantener la entrada booleana original
+               input-list-val))))))
+
 
 (define merge-circuits
   (lambda (circ1 circ2 gate-type)
@@ -363,6 +383,7 @@
                    (new-gate-name (string->symbol "merged-gate"))
                    (new-gate (a-gate new-gate-name gate-type (my-input-list (list (ref-input (gate-name last-gate1)) (ref-input (gate-name last-gate2)))))))
               (a-circuit (append gates1 (append gates2 (list new-gate)))))))))))
+
 (define list-find-position
   (lambda (sym los)
     (list-index (lambda (sym1) (eqv? sym1 sym)) los)))
@@ -377,6 +398,20 @@
                   (+ list-index-r 1)
                   #f))))))
 
+(define gate_type
+  (lambda (g)
+    (cases gate g
+      (a-gate (name type inputs) type))))
+
+(define gate-inputs
+  (lambda (g)
+    (cases gate g
+      (a-gate (name type inputs) inputs))))
+
+(define input-list->list
+  (lambda (input-list-val)
+    (cases input-list input-list-val
+      (my-input-list (inputs) inputs))))
 ;******************************************************************************************
 ;Pruebas
 
@@ -415,7 +450,12 @@ add1(x)")
 (define un-programa-dificil
   (a-program una-expresion-dificil))
 
+
+
+
+
 (interpretador)
+
 
 ;;Ejemplo 1
 ;;let C1= (circuit (gate_list (gate G1 not (input_list True))))
@@ -432,6 +472,17 @@ add1(x)")
 ;;                   (gate G2 not (input_list G1))))
 ;; in eval-circuit (C3)  -->false
 
-;;let C1 = (circuit (gate_list (gate G1 not (input_list False))(gate G3 not (input_list G1))))
-;;C2 = (circuit (gate_list (gate G2 not (input_list True))))
-;;  in connect-circuits (C1) (C2)
+;;let C1 = (circuit (gate_list (gate G1 not (input_list True))(gate G3 not (input_list G1))))
+;;C2 = (circuit (gate_list
+;;                    (gate G1 and (input_list False True))
+;;                    (gate G2 not (input_list True))))
+;;  in connect-circuits (C1, C2, 'G1)
+
+
+
+;;let C1 = (circuit (gate_list (gate G4 not (input_list False))
+;;                             (gate G3 not (input_list G4))))
+;; C2 = (circuit (gate_list
+;;                  (gate G1 and (input_list True True))
+;;                  (gate G2 not (input_list G1))))
+;;  in eval-circuit(connect-circuits (C1, C2, 'G1))

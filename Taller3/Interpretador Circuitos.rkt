@@ -57,6 +57,8 @@
      (expression ("or") or-exp) ; Nueva regla para "or"
      (expression ("not") not-exp) ; Nueva regla para "not"
      (expression ("xor") xor-exp) ; Nueva regla para "xor"
+     (expression ("True") true-exp)
+     (expression ("False") false-exp)
 
 
      ; Primitivas
@@ -106,6 +108,7 @@
       scanner-spec-simple-interpreter
       grammar-simple-interpreter)))
 
+
 ;*******************************************************************************************
 ;El Interprete
 
@@ -124,14 +127,16 @@
     (cases expression exp
       (lit-exp (datum) datum)
       (var-exp (id) (apply-env env id))
-      (symbol-exp (id) id)  ; <-- Nueva cláusula para símbolos literales como 'G2
-      (and-exp () 'and) ; Manejar "and" como símbolo
-      (or-exp () 'or) ; Manejar "or" como símbolo
-      (not-exp () 'not) ; Manejar "not" como símbolo
+      (symbol-exp (id) id)
+      (and-exp () 'and)
+      (or-exp () 'or)
+      (not-exp () 'not)
       (xor-exp () 'xor)
+      (true-exp () #t)
+      (false-exp () #f)
       (primapp-exp (prim rands)
-        (let ((args (eval-rands rands env)))  ; Siempre evaluamos los argumentos
-          (apply-primitive prim args)))
+        (let ((args (eval-rands rands env)))
+          (apply-primitive prim args env)))  ; Pasar el entorno a apply-primitive
       (if-exp (test-exp true-exp false-exp)
         (let ((test-val (eval-expression test-exp env)))
           (if (true-value? test-val)
@@ -141,7 +146,6 @@
         (let ((args (eval-rands rands env)))
           (eval-expression body (extend-env ids args env))))
       (circuit-exp (circuit) circuit))))
-
 (define extract-circuit-result
   (lambda (env)
     (cases environment env
@@ -170,7 +174,7 @@
 
 
 (define apply-primitive
-  (lambda (prim args)
+  (lambda (prim args env)
     (cases primitive prim
       (add-prim () (+ (car args) (cadr args)))
       (substract-prim () (- (car args) (cadr args)))
@@ -178,24 +182,23 @@
       (incr-prim () (+ (car args) 1))
       (decr-prim () (- (car args) 1))
       (eval-circuit-prim ()
-        (if (not (= (length args) 1))
-            (eopl:error 'apply-primitive "eval-circuit requiere exactamente 1 argumento")
-            (let ((circ (car args)))
-              (if (circuit? circ)
-                  (let ((circuit-env (eval-circuit circ (empty-env))))
-                    (let ((result (extract-circuit-result circuit-env)))
-                      result))
-                  circ)))) 
-      (connect-circuits-prim ()
-  (if (= (length args) 3)
-      (let ((circ1 (car args))
-            (circ2 (cadr args))
-            (target-gate-name (caddr args)))
-        (if (and (circuit? circ1) (circuit? circ2) (symbol? target-gate-name))
-            (connect-circuits circ1 circ2 target-gate-name)
-            (eopl:error 'connect-circuits "Argumentos inválidos: se esperaban dos circuitos y un símbolo")))
-      (eopl:error 'connect-circuits "Número incorrecto de argumentos: se esperaban exactamente 3, recibió ~a" (length args))))
-
+  (if (not (= (length args) 1))
+      (eopl:error 'apply-primitive "eval-circuit requiere exactamente 1 argumento")
+      (let ((circ (car args)))
+        (if (circuit? circ)
+              (let ((circuit-env (eval-circuit circ env))) ; Usar el entorno pasado
+                circuit-env) ; Devolver el entorno directamente para inspección
+            circ))))
+       (connect-circuits-prim ()
+        (if (= (length args) 3)
+            (let ((circ1 (car args))
+                  (circ2 (cadr args))
+                  (target-gate-name (caddr args)))
+              (if (and (circuit? circ1) (circuit? circ2) (symbol? target-gate-name))
+                  (begin
+                    (connect-circuits circ1 circ2 target-gate-name))
+                  (eopl:error 'connect-circuits "Argumentos inválidos: se esperaban dos circuitos y un símbolo")))
+            (eopl:error 'connect-circuits "Número incorrecto de argumentos: se esperaban exactamente 3, recibió ~a" (length args))))
       (merge-circuits-prim ()
         (if (not (= (length args) 4)) ; Debe recibir 4 argumentos
             (eopl:error 'apply-primitive "merge-circuits requiere exactamente 4 argumentos, recibió ~s" args)
@@ -323,11 +326,20 @@
 
 ; Evaluamos un circuito completo. Se recibe un circuito y un ambiente ;
 ; de evaluación, y evaluamos el circuito en ese entorno ;
-(define (eval-circuit circuit-val env)
-  (cases circuit circuit-val
-    (a-circuit (gates)
-      (eval-gate-list gates env))))
+(define eval-circuit
+  (lambda (circuit-val env)
+    (cases circuit circuit-val
+      (a-circuit (gates)
+        (let ((final-env (eval-gate-list gates env)))
+          ; Obtenemos específicamente el valor de la última compuerta evaluada (B)
+          (let ((last-gate-name (gate-name (last (gate-list-gates gates)))))
+            (apply-env final-env last-gate-name)))))))
 
+; Función auxiliar para obtener la lista de compuertas
+(define gate-list-gates
+  (lambda (gates)
+    (cases gate-list gates
+      (my-gate-list (gate-structs) gate-structs))))
 ; Evaluamos una lista de compuertas de forma secuencial, al mismo tiempo ;
 ; vamos actualizando el entorno con cada uno de los resultados de las com ;
 ; puertas por medio de la recursión ;
@@ -336,13 +348,14 @@
     (cases gate-list gates
       (my-gate-list (gate-structs)
         (if (null? gate-structs)
-            env ; Caso base: no hay compuertas, retorna el ambiente actual
-            (let* ((current-gate (car gate-structs))
-                   (gate-result (eval-gate current-gate env))
-                   (gate-name (car gate-result))
-                   (gate-value (cadr gate-result)))
-              (eval-gate-list (my-gate-list (cdr gate-structs)) (extend-env (list gate-name) (list gate-value) env))))))))
-
+            env
+            (let ((current-gate (car gate-structs)))
+              (let ((gate-result (eval-gate current-gate env)))
+                (let ((gate-name (car gate-result))
+                      (gate-value (cadr gate-result)))
+                  (eval-gate-list 
+                   (my-gate-list (cdr gate-structs))
+                   (extend-env (list gate-name) (list gate-value) env))))))))))
 ; Se evaluá una compuerta individual. Primero evalúa las entradas usando ;
 ; el entorno actual para posteriormente aplicar la operación lógica corres ;
 ; pondiente al tipo de compuerta para devolver una lista con el nombre y el ;
@@ -372,26 +385,58 @@
 
 ; Conectamos dos circuitos, donde la salida del primer circuito alimenta ;
 ; una compuerta específica del segundo circuito ;
+; Función mejorada para conectar circuitos
 (define connect-circuits
-  (lambda (circ1 circ2 target-gate-name)
+  (lambda (circ1 circ2 target-input)
     (cases circuit circ1
-      (a-circuit (gates1-struct)
-        (let ((gates1 (cases gate-list gates1-struct (my-gate-list (gates) gates))))
-          (let ((output-gate (last gates1)))
-            (cases circuit circ2
-              (a-circuit (gates2-struct)
-                (let ((gates2 (cases gate-list gates2-struct (my-gate-list (gates) gates))))
-                  (let ((mapped-gates
-                          (map (lambda (g)
-                                 (cases gate g
-                                   (a-gate (name type inputs)
-                                     (if (eqv? name target-gate-name)
-                                         output-gate
-                                         (a-gate name type (replace-refs inputs target-gate-name (gate-name output-gate)))))))
-                               gates2)))
-                    (a-circuit
-                      (my-gate-list
-                        (append gates1 mapped-gates)))))))))))))
+      (a-circuit (gates1)
+        (cases circuit circ2
+          (a-circuit (gates2)
+            (let ((output-gate (last-gate gates1)))
+              (a-circuit
+                (my-gate-list
+                  (append
+                    (gate-list-gates gates1) ; Mantenemos CIRC1 intacto
+                    (update-gates-inputs      ; Modificamos solo inputs en CIRC2
+                      (gate-list-gates gates2)
+                      target-input
+                      (gate-name output-gate))))))))))))
+
+(define update-gates-inputs
+  (lambda (gates target-input replacement)
+    (map
+      (lambda (g)
+        (cases gate g
+          (a-gate (name type inputs)
+            (a-gate
+              name
+              type
+              (update-input-list inputs target-input replacement)))))
+      gates)))
+
+(define update-input-list
+  (lambda (inputs target replacement)
+    (cases input-list inputs
+      (my-input-list (input-vals)
+        (my-input-list
+          (map
+            (lambda (inp)
+              (cases input inp
+                (ref-input (name)
+                  (if (eqv? name target)
+                      (ref-input replacement) ; Reemplaza C por G4
+                      inp))
+                (bool-input (val) inp)))
+            input-vals))))))
+;; Función para obtener la última compuerta de una lista
+(define last-gate
+  (lambda (gates)
+    (cases gate-list gates
+      (my-gate-list (gate-structs)
+        (if (null? (cdr gate-structs))
+            (car gate-structs)
+            (last-gate (my-gate-list (cdr gate-structs))))))))
+
 
 ; Combinamos 2 circuitos, de modo que creamos una nueva compuerta que toma ;
 ; como entradas las salidas de ambos circuitos ;
@@ -436,56 +481,165 @@
 (interpretador)
 ;******************************************************************************************
 ;Pruebas
-;;let C1= (circuit (gate_list (gate G1 not (input_list True))))
-;; in eval-circuit (C1)  ---> Devuelve False 
+;*****Circuito con una compuerta NOT*********
+;;let A = True
+;;in let C1 = (circuit (gate_list (gate B not (input_list A))))
+;;in eval-circuit (C1)---> Devuelve False
+;****** Circuito AND simple*********
+;;let A = True
+;;    B = True in
+;;let C2 = (circuit (gate_list 
+;;                  (gate G1 and (input_list A B))))
+;;in eval-circuit (C2)  ---> Devuelve True
 
-;;let C2 = (circuit (gate_list(gate G1 and (input_list True True))))
-;;  in eval-circuit (C2)  ---> Devuelve True
-;;let C3 = (circuit (gate_list(gate G1 and (input_list False True))))
-;;  in eval-circuit (C3)  ---> Devuelve false
+;****** Circuito OR simple*********
+;;let C3 = (circuit (gate_list(gate G1 or (input_list False True))))
+;;  in eval-circuit (C3)  ---> Devuelve True
+
+;*******Representacion del XOR****************
+;; 1. A=True B=True
+;;let C3 = (circuit (gate_list
+;;                   (gate G1 or (input_list True True))
+;;                   (gate G2 and (input_list True True)) 
+;;                   (gate G3 not (input_list G2))
+;;                   (gate G4 and (input_list G1 G3))))
+;; in eval-circuit (C3)  -->false
+
+;; 2. A=False B=False
+;;let C3 = (circuit (gate_list
+;;                   (gate G1 or (input_list False False))
+;;                   (gate G2 and (input_list False False)) 
+;;                   (gate G3 not (input_list G2))
+;;                   (gate G4 and (input_list G1 G3))))
+;; in eval-circuit (C3)  -->False
+
+;; 3.
+;; let A = True
+;;     B = False in
+;;let C3 = (circuit (gate_list
+;;                  (gate G1 or (input_list True False))
+;;                (gate G2 and (input_list True False)) 
+;;                (gate G3 not (input_list G2))
+;;                (gate G4 and (input_list G1 G3))))
+;;in eval-circuit (C3)-->True
 
 ;;let C3 = (circuit (gate_list
 ;;                   (gate G1 and (input_list True True))
 ;;                   (gate G2 not (input_list G1))))
 ;; in eval-circuit (C3)  -->false
-
-;;let C1 = (circuit (gate_list (gate G1 not (input_list True))(gate G3 not (input_list G1))))
+;;////////////////////////////////CONNECT-CIRCUITS////////////////////////
+;;*****Conexion de los circuitos de la seccion 3.1 y 3.2*******************
+;;let A=True B=True in 
+;;let C1 = (circuit (gate_list
+;;                    (gate G not (input_list A))))
 ;;C2 = (circuit (gate_list
-;;                    (gate G1 and (input_list False True))
-;;                    (gate G2 not (input_list True))))
-;;  in connect-circuits (C1, C2, 'G1)
-
-;;let C1 = (circuit (gate_list (gate G4 not (input_list False))
-;;                             (gate G3 not (input_list G4))))
-;; C2 = (circuit (gate_list
-;;                  (gate G1 and (input_list True True))
-;;                  (gate G2 not (input_list G1))))
-;;  in eval-circuit(connect-circuits (C1, C2, 'G1)) -- > Devuelve True
-
-;;let C1 = (circuit (gate_list (gate G4 not (input_list False))
-;;                             (gate G3 not (input_list G4))))
+;;                    (gate G1 and (input_list A B))))
+;;  in connect-circuits (C1, C2, 'A)
+;;**EVALUACION**
+;;let A=True B=True in 
+;;let C1 = (circuit (gate_list
+;;                    (gate G not (input_list A))))
 ;;C2 = (circuit (gate_list
-;;                  (gate G1 and (input_list True True))
-;;                  (gate G2 not (input_list G1))))
-;;  in merge-circuits (C1, C2 , and , 'G8)
+;;                    (gate G1 and (input_list A B))))
+;;  in eval-circuit(connect-circuits (C1, C2, 'A))--> Devuelve False
 
-;;let C1 = (circuit (gate_list (gate G4 not (input_list False))
-;;                             (gate G3 not (input_list G4))))
+;;*****Conexion de los circuitos de la seccion 3.1 y 3.3*******************
+;;let A=True B=True in 
+;;let C1 = (circuit (gate_list
+;;                  (gate G not (input_list A))))
 ;;C2 = (circuit (gate_list
-;;                  (gate G1 and (input_list True True))
-;;                  (gate G2 not (input_list G1))))
-;;  in eval-circuit(merge-circuits (C1, C2 , and , 'G8)) --> Devuelve False
+;;                (gate G1 or (input_list A B))
+;;                (gate G2 and (input_list A B)) 
+;;                (gate G3 not (input_list G2))
+;;                (gate G4 and (input_list G1 G3))))
+;;  in connect-circuits (C1, C2, 'A)
+;;**EVALUACION**
+;;let A=True B=True in 
+;;let C1 = (circuit (gate_list
+;;                  (gate G not (input_list A))))
+;;C2 = (circuit (gate_list
+;;                (gate G1 or (input_list A B))
+;;                (gate G2 and (input_list A B)) 
+;;                (gate G3 not (input_list G2))
+;;                (gate G4 and (input_list G1 G3))))
+;;  in eval-circuit(connect-circuits (C1, C2, 'A))-->True
+;;*****Conexion de los circuitos de la seccion 3.2 y 3.3*******************
+;;let A=False B=True in 
+;;let C1 = (circuit (gate_list
+;;                  (gate G and (input_list A B))))
+;;C2 = (circuit (gate_list
+;;                (gate G1 or (input_list A B))
+;;                (gate G2 and (input_list A B)) 
+;;                (gate G3 not (input_list G2))
+;;                (gate G4 and (input_list G1 G3))))
+;;  in connect-circuits (C1, C2, 'A)
+;;**EVALUACION**
+;;let A=False B=True in 
+;;let C1 = (circuit (gate_list
+;;                  (gate G and (input_list A B))))
+;;C2 = (circuit (gate_list
+;;                (gate G1 or (input_list A B))
+;;                (gate G2 and (input_list A B)) 
+;;                (gate G3 not (input_list G2))
+;;                (gate G4 and (input_list G1 G3))))
+;;  in eval-circuit(connect-circuits (C1, C2, 'A))
 
-;;let C1 = (circuit (gate_list (gate G4 not (input_list True))
-;;                             (gate G3 not (input_list G4))))
-;; C2 = (circuit (gate_list
-;;                  (gate G1 and (input_list False False))
-;;                  (gate G2 not (input_list G1))))
-;;  in merge-circuits (C1, C2 , or , 'G8)
 
-;;let C1 = (circuit (gate_list (gate G4 not (input_list True))
-;;                             (gate G3 not (input_list G4))))
-;; C2 = (circuit (gate_list
-;;                  (gate G1 and (input_list False False))
-;;                  (gate G2 not (input_list G1))))
-;;  in eval-circuit(merge-circuits (C1, C2 , or , 'G8)) --> Devuelve True
+;;/////////////////////////MERGE-CIRCUITS////////////////////////
+
+;;*****Conexion de los circuitos de la seccion 3.1 y 3.2 con and*******************
+
+;;let A=False B=True C=True in 
+;;let C1 = (circuit (gate_list
+;;                    (gate G not (input_list A))))
+;;C2 = (circuit (gate_list
+;;                    (gate G1 and (input_list B C))))
+;;  in merge-circuits (C1, C2 , and , 'G10)
+;;**EVALUACION**
+;;let A=False B=True C=True in 
+;;let C1 = (circuit (gate_list
+;;                    (gate G not (input_list A))))
+;;C2 = (circuit (gate_list
+;;                    (gate G1 and (input_list B C))))
+;;  in eval-circuit(merge-circuits (C1, C2 , and , 'G10))-->True
+
+;;*****Conexion de los circuitos de la seccion 3.1 y 3.3 con or*******************
+;;let A=True B=True in 
+;;let C1 = (circuit (gate_list
+;;                  (gate G not (input_list A))))
+;;C2 = (circuit (gate_list
+;;                (gate G1 or (input_list A B))
+;;                (gate G2 and (input_list A B)) 
+;;                (gate G3 not (input_list G2))
+;;                (gate G4 and (input_list G1 G3))))
+;;  in  merge-circuits (C1, C2 , and , 'G20)
+;;**EVALUACION**
+;;let A=True B=True in 
+;;let C1 = (circuit (gate_list
+;;                  (gate G not (input_list A))))
+;;C2 = (circuit (gate_list
+;;                (gate G1 or (input_list A B))
+;;                (gate G2 and (input_list A B)) 
+;;                (gate G3 not (input_list G2))
+;;                (gate G4 and (input_list G1 G3))))
+;;  in eval-circuit(merge-circuits (C1, C2 , or , 'G20))-->False
+
+;;*****Conexion de los circuitos 3.1 y 3.2 xor 3.1 y 3.3*******************
+;;      let A = False B = True C = True
+;;C1 = (circuit (gate_list
+;;                          (gate G_1 not (input_list A))))
+;;          C2 = (circuit (gate_list
+;;                          (gate G1_1 and (input_list B C))))
+;;       MERGE_1= merge-circuits(C1, C2, and, 'G10)
+;;  
+;;       D = True E = True
+;     C3 = (circuit (gate_list
+;;                          (gate G not (input_list D))))
+;;          C4 = (circuit (gate_list
+;;                          (gate G1 or (input_list D E))
+;;                          (gate G2 and (input_list D E))
+;;                          (gate G3 not (input_list G2))
+;;                          (gate G4 and (input_list G1 G3))))
+;;       MERGE_2=merge-circuits(C3, C4, and, 'G20)
+
+;;in merge-circuits(MERGE_1, MERGE_2, xor, 'G100)

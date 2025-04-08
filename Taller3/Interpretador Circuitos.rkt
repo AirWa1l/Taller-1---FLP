@@ -485,6 +485,9 @@
 ;;let A = True
 ;;in let C1 = (circuit (gate_list (gate B not (input_list A))))
 ;;in eval-circuit (C1)---> Devuelve False
+;;let A = False
+;;in let C1 = (circuit (gate_list (gate B not (input_list A))))
+;;in eval-circuit (C1)---> Devuelve True
 ;****** Circuito AND simple*********
 ;;let A = True
 ;;    B = True in

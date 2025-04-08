@@ -633,21 +633,19 @@
 ;;  in eval-circuit(merge-circuits (C1, C2 , or , 'G20))-->False
 
 ;;*****Conexion de los circuitos 3.1 y 3.2 xor 3.1 y 3.3*******************
-;;      let A = False B = True C = True
-;;C1 = (circuit (gate_list
-;;                          (gate G_1 not (input_list A))))
-;;          C2 = (circuit (gate_list
-;;                          (gate G1_1 and (input_list B C))))
-;;       MERGE_1= merge-circuits(C1, C2, and, 'G10)
-;;  
-;;       D = True E = True
-;     C3 = (circuit (gate_list
-;;                          (gate G not (input_list D))))
-;;          C4 = (circuit (gate_list
-;;                          (gate G1 or (input_list D E))
-;;                          (gate G2 and (input_list D E))
-;;                          (gate G3 not (input_list G2))
-;;                          (gate G4 and (input_list G1 G3))))
-;;       MERGE_2=merge-circuits(C3, C4, and, 'G20)
-
-;;in merge-circuits(MERGE_1, MERGE_2, xor, 'G100)
+;;let A=False B=True C=True in 
+;;let C1 = (circuit (gate_list
+;;                  (gate G1 not (input_list A))))
+;;    C2 = (circuit (gate_list
+;;                  (gate G2 and (input_list B C))))
+;;in let merge1 = merge-circuits (C1, C2 , and , 'G10) in
+;;let D=True E=True in
+;;let C3 = (circuit (gate_list
+;;                  (gate G3 not (input_list D))))
+;;    C4 = (circuit (gate_list
+;;                  (gate G4 or (input_list D E))
+;;                  (gate G5 and (input_list D E))
+;;                  (gate G6 not (input_list G5))
+;;                  (gate G7 and (input_list G4 G6))))
+;;in let merge2 = merge-circuits (C3, C4 , and , 'G20) in
+;;eval-circuit(merge-circuits (merge1, merge2 , xor , 'G100))

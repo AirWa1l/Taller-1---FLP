@@ -505,7 +505,7 @@
 ;;  in eval-circuit (C3)  ---> Devuelve True
 
 ;*******Representacion del XOR****************
-;; 1. A=True B=True
+;;let A=True B=True in
 ;;let C3 = (circuit (gate_list
 ;;                   (gate G1 or (input_list True True))
 ;;                   (gate G2 and (input_list True True)) 
@@ -513,7 +513,7 @@
 ;;                   (gate G4 and (input_list G1 G3))))
 ;; in eval-circuit (C3)  -->false
 
-;; 2. A=False B=False
+;;let A=False B=False in
 ;;let C3 = (circuit (gate_list
 ;;                   (gate G1 or (input_list False False))
 ;;                   (gate G2 and (input_list False False)) 
@@ -590,7 +590,7 @@
 ;;                (gate G2 and (input_list A B)) 
 ;;                (gate G3 not (input_list G2))
 ;;                (gate G4 and (input_list G1 G3))))
-;;  in eval-circuit(connect-circuits (C1, C2, 'A))
+;;  in eval-circuit(connect-circuits (C1, C2, 'A)) --> Devuelve True
 
 
 ;;/////////////////////////MERGE-CIRCUITS////////////////////////
@@ -669,3 +669,5 @@
 ;;                  (gate G7 and (input_list G4 G6))))
 ;;in let merge2 = merge-circuits (C3, C4 , and , 'G20) in
 ;;eval-circuit(merge-circuits (merge1, merge2 , xor , 'G100)) -->Devuelve True
+
+;; Nota adicional, en caso de que alguna no prueba por un error "binding" solo dar un espacio en el primer let al momento de hacer la prueba :D

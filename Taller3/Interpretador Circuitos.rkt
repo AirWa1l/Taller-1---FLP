@@ -494,6 +494,11 @@
 ;;let C2 = (circuit (gate_list 
 ;;                  (gate G1 and (input_list A B))))
 ;;in eval-circuit (C2)  ---> Devuelve True
+;;let A = True
+;;    B = False in
+;;let C2 = (circuit (gate_list 
+;;                  (gate G1 and (input_list A B))))
+;;in eval-circuit (C2)  ---> Devuelve False
 
 ;****** Circuito OR simple*********
 ;;let C3 = (circuit (gate_list(gate G1 or (input_list False True))))
